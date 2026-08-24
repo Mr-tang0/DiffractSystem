@@ -1,6 +1,8 @@
 package main
 
 import (
+	components "Diffract/services/components"
+
 	"embed"
 
 	"github.com/wailsapp/wails/v2"
@@ -12,21 +14,29 @@ import (
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
-	app := NewApp()
 
-	// Create application with options
+	Detector := components.NewDetectorService()
+	Stage := components.NewStageService()
+	HVPS := components.NewHVPSService()
+
+	app := NewApp(Stage, Detector, HVPS)
+
 	err := wails.Run(&options.App{
 		Title:  "Diffract",
-		Width:  1024,
-		Height: 768,
+		Width:  1300,
+		Height: 950,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		Frameless:        true,
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+
 		Bind: []interface{}{
 			app,
+			Stage,
+			Detector,
+			HVPS,
 		},
 	})
 

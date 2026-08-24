@@ -1,4 +1,4 @@
-package services
+package components
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type MotorDetails struct {
 	XX Motor `json:"xx"`
 }
 
-type DiffractService struct {
+type StageService struct {
 	MODE string // 模式:
 
 	motors MotorDetails
@@ -35,8 +35,8 @@ type DiffractService struct {
 	ctx    context.Context
 }
 
-func NewDiffractService() *DiffractService {
-	return &DiffractService{
+func NewStageService() *StageService {
+	return &StageService{
 		plc: *XinjieClient.NewXinjieClient(),
 		motors: MotorDetails{
 			X:  Motor{Status: "Stopped"},
@@ -48,7 +48,7 @@ func NewDiffractService() *DiffractService {
 	}
 }
 
-func (this *DiffractService) Startup(ctx context.Context) error {
+func (this *StageService) Startup(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("ctx is nil")
 	}
@@ -56,10 +56,10 @@ func (this *DiffractService) Startup(ctx context.Context) error {
 	return nil
 }
 
-// DiffractStagesConnect 连接 diffract 设备
-func (this *DiffractService) DiffractStagesConnect(ip string) error {
+// StagesConnect 连接 diffract 设备
+func (this *StageService) StagesConnect(ip string) error {
 	if debug {
-		fmt.Println("DiffractStagesConnect", ip)
+		fmt.Println("StagesConnect", ip)
 	}
 	if ip == "" {
 		return errors.New("ip is empty")
@@ -72,10 +72,19 @@ func (this *DiffractService) DiffractStagesConnect(ip string) error {
 	return nil
 }
 
-// DiffractGetStagesDetails 获取 diffract 设备详情
-func (this *DiffractService) DiffractGetStagesDetails() error {
+// StagesDisconnect 断开 diffract 设备连接
+func (this *StageService) StagesDisconnect() error {
 	if debug {
-		fmt.Println("DiffractGetStagesDetails")
+		fmt.Println("StagesDisconnect")
+	}
+	this.plc.Close()
+	return nil
+}
+
+// GetStagesDetails 获取 diffract 设备详情
+func (this *StageService) GetStagesDetails() error {
+	if debug {
+		fmt.Println("GetStagesDetails")
 	}
 	details, err := this.plc.ReadHDRegisters(0, 25, XinjieClient.Float32)
 	if err != nil {
@@ -100,27 +109,27 @@ func (this *DiffractService) DiffractGetStagesDetails() error {
 }
 
 // heartbeat 心跳
-func (this *DiffractService) heartbeat() {
+func (this *StageService) heartbeat() {
 	if debug {
 		fmt.Println("heartbeat")
 	}
 	for {
-		this.updateMotor(&this.motors.X, X_POS_HD)
-		this.updateMotor(&this.motors.Y, Y_POS_HD)
-		this.updateMotor(&this.motors.Z, Z_POS_HD)
-		this.updateMotor(&this.motors.R, R_POS_HD)
-		this.updateMotor(&this.motors.XX, XX_POS_HD)
+		this.updateAxis(&this.motors.X, X_POS_HD)
+		this.updateAxis(&this.motors.Y, Y_POS_HD)
+		this.updateAxis(&this.motors.Z, Z_POS_HD)
+		this.updateAxis(&this.motors.R, R_POS_HD)
+		this.updateAxis(&this.motors.XX, XX_POS_HD)
 
 		if debug {
 			fmt.Println(this.motors.X.Position, this.motors.Y.Position, this.motors.Z.Position, this.motors.R.Position, this.motors.XX.Position)
 		}
 		runtime.EventsEmit(this.ctx, "motor_heartbeat", this.motors)
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 }
 
-// updateMotor 更新电机状态
-func (this *DiffractService) updateMotor(motor *Motor, addr uint16) {
+// updateAxis 更新轴状态
+func (this *StageService) updateAxis(motor *Motor, addr uint16) {
 	pos, _ := this.plc.ReadHDRegister(addr, XinjieClient.Float32)
 	newPos := pos.(float32)
 	if newPos == motor.Position {
@@ -131,19 +140,10 @@ func (this *DiffractService) updateMotor(motor *Motor, addr uint16) {
 	motor.Position = newPos
 }
 
-// DiffractStagesDisconnect 断开 diffract 设备连接
-func (this *DiffractService) DiffractStagesDisconnect() error {
+// SetAxisSpeed 设置 diffract 设备轴速度
+func (this *StageService) SetAxisSpeed(Axis string, speed float32) error {
 	if debug {
-		fmt.Println("DiffractStagesDisconnect")
-	}
-	this.plc.Close()
-	return nil
-}
-
-// DiffractSetAxisSpeed 设置 diffract 设备轴速度
-func (this *DiffractService) DiffractSetAxisSpeed(Axis string, speed float32) error {
-	if debug {
-		fmt.Println("DiffractSetAxisSpeed", Axis, speed)
+		fmt.Println("SetAxisSpeed", Axis, speed)
 	}
 	if Axis == "" || speed == 0 {
 		return errors.New("Axis or speed is empty")
@@ -164,10 +164,10 @@ func (this *DiffractService) DiffractSetAxisSpeed(Axis string, speed float32) er
 	}
 }
 
-// DiffractSetAxisResolution 设置 diffract 设备轴分辨率
-func (this *DiffractService) DiffractSetAxisResolution(Axis string, resolution float32) error {
+// SetAxisResolution 设置 diffract 设备轴分辨率
+func (this *StageService) SetAxisResolution(Axis string, resolution float32) error {
 	if debug {
-		fmt.Println("DiffractSetAxisResolution", Axis, resolution)
+		fmt.Println("SetAxisResolution", Axis, resolution)
 	}
 	if Axis == "" || resolution == 0 {
 		return errors.New("Axis or resolution is empty")
@@ -188,38 +188,44 @@ func (this *DiffractService) DiffractSetAxisResolution(Axis string, resolution f
 	}
 }
 
-// DiffractStagesJOG 运动 diffract 设备轴
-func (this *DiffractService) DiffractStagesJOG(Axis string, speed float32, jog bool) error {
+// StagesJOGMove 运动 diffract 设备轴
+func (this *StageService) StagesJOGMove(Axis string, dir int) error {
 	if debug {
-		fmt.Println("DiffractStagesJOG", Axis, speed, jog)
-	}
-	if Axis == "" || speed == 0 {
-		return errors.New("Axis or speed is empty")
+		fmt.Println("StagesJOGMove", Axis, dir, dir)
 	}
 
-	if err := this.DiffractSetAxisSpeed(Axis, speed); err != nil {
-		return err
-	}
+	var M uint16 = 0
+	var Speed float32 = 0.0
+
 	switch Axis {
 	case "X":
-		return this.plc.WriteMCoil(X_JOG_M, jog)
+		M = X_JOG_M
+		Speed = this.motors.X.Speed * float32(dir)
 	case "Y":
-		return this.plc.WriteMCoil(Y_JOG_M, jog)
+		M = Y_JOG_M
+		Speed = this.motors.Y.Speed * float32(dir)
 	case "Z":
-		return this.plc.WriteMCoil(Z_JOG_M, jog)
+		M = Z_JOG_M
+		Speed = this.motors.Z.Speed * float32(dir)
 	case "R":
-		return this.plc.WriteMCoil(R_JOG_M, jog)
+		M = R_JOG_M
+		Speed = this.motors.R.Speed * float32(dir)
 	case "XX":
-		return this.plc.WriteMCoil(XX_JOG_M, jog)
+		M = XX_JOG_M
+		Speed = this.motors.XX.Speed * float32(dir)
 	default:
 		return errors.New("Axis is not supported")
 	}
+	if err := this.SetAxisSpeed(Axis, Speed); err != nil {
+		return err
+	}
+	return this.plc.WriteMCoil(M, true)
 }
 
-// DiffractStagesSTOP 停止 diffract 设备轴
-func (this *DiffractService) DiffractStagesSTOP(Axis string) error {
+// StagesSTOPMove 停止 diffract 设备轴
+func (this *StageService) StagesSTOPMove(Axis string) error {
 	if debug {
-		fmt.Println("DiffractStagesSTOP", Axis)
+		fmt.Println("StagesSTOPMove", Axis)
 	}
 	if Axis == "" {
 		return errors.New("Axis is empty")
@@ -240,31 +246,58 @@ func (this *DiffractService) DiffractStagesSTOP(Axis string) error {
 	}
 }
 
-// DiffractStagesMOVE 移动 diffract 设备轴
-func (this *DiffractService) DiffractStagesMOVE(Axis string, len float32) error {
+// StagesRELMove 相对运动 diffract 设备轴
+func (this *StageService) StagesRELMove(Axis string, rel_len float32) error {
 	if debug {
-		fmt.Println("DiffractStagesMOVE", Axis, len)
+		fmt.Println("StagesRELMove", Axis, rel_len)
 	}
-	if Axis == "" || len == 0 {
-		return errors.New("Axis or len is empty")
+	if Axis == "" || rel_len == 0 {
+		return errors.New("Axis or rel_len is empty")
 	}
 	switch Axis {
 	case "X":
-		this.plc.WriteHDRegister(X_MOVE_M, len, XinjieClient.Float32)
+		this.plc.WriteHDRegister(X_MOVE_M, rel_len, XinjieClient.Float32)
 		return this.plc.WriteMCoil(X_MOVE_M, true)
 	case "Y":
-		this.plc.WriteHDRegister(Y_MOVE_M, len, XinjieClient.Float32)
+		this.plc.WriteHDRegister(Y_MOVE_M, rel_len, XinjieClient.Float32)
 		return this.plc.WriteMCoil(Y_MOVE_M, true)
 	case "Z":
-		this.plc.WriteHDRegister(Z_MOVE_M, len, XinjieClient.Float32)
+		this.plc.WriteHDRegister(Z_MOVE_M, rel_len, XinjieClient.Float32)
 		return this.plc.WriteMCoil(Z_MOVE_M, true)
 	case "R":
-		this.plc.WriteHDRegister(R_MOVE_M, len, XinjieClient.Float32)
+		this.plc.WriteHDRegister(R_MOVE_M, rel_len, XinjieClient.Float32)
 		return this.plc.WriteMCoil(R_MOVE_M, true)
 	case "XX":
-		this.plc.WriteHDRegister(XX_MOVE_M, len, XinjieClient.Float32)
+		this.plc.WriteHDRegister(XX_MOVE_M, rel_len, XinjieClient.Float32)
 		return this.plc.WriteMCoil(XX_MOVE_M, true)
 	default:
 		return errors.New("Axis is not supported")
 	}
+}
+
+// StagesABSMove 绝对运动 diffract 设备轴
+func (this *StageService) StagesABSMove(axis string, abs_len float32) error {
+	if debug {
+		fmt.Println("StagesABSMove", axis, abs_len)
+	}
+	rel_len := float32(0.0)
+	switch axis {
+	case "X":
+		rel_len = abs_len - this.motors.X.Position
+	case "Y":
+		rel_len = abs_len - this.motors.Y.Position
+	case "Z":
+		rel_len = abs_len - this.motors.Z.Position
+	case "R":
+		rel_len = abs_len - this.motors.R.Position
+	case "XX":
+		rel_len = abs_len - this.motors.XX.Position
+	default:
+		return errors.New("Axis is not supported")
+	}
+	if err := this.StagesRELMove(axis, rel_len); err != nil {
+		return err
+	}
+
+	return nil
 }

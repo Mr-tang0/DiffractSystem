@@ -1,27 +1,53 @@
 package main
 
 import (
+	services "Diffract/services"
+	components "Diffract/services/components"
 	"context"
 	"fmt"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx     context.Context
+	updater *services.UpdateService
+
+	// 设备实例
+	Stage    *components.StageService
+	Detector *components.DetectorService
+	HVPS     *components.HVPSService
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(
+	stage *components.StageService,
+	detector *components.DetectorService,
+	hvps *components.HVPSService) *App {
+	return &App{
+		Stage:    stage,
+		Detector: detector,
+		HVPS:     hvps,
+	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
+	a.updater = &services.UpdateService{}
 	a.ctx = ctx
+
+	// 初始化Stage (DiffractService)
+	a.Stage.Startup(a.ctx)
+	// 初始化HVPS
+	a.HVPS.SetContent(a.ctx)
 }
 
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+func (a *App) APIUpdate() (services.GitHubRelease, error) {
+	release, err := a.updater.GetUpdateInfo()
+	if err != nil {
+		fmt.Printf("获取更新信息失败: %v\n", err)
+		return services.GitHubRelease{}, err
+	}
+	return release, nil
+}
+
+func (a *App) GetCachedRelease() services.GitHubRelease {
+	return a.updater.GetCachedRelease()
 }
