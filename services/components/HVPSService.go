@@ -209,6 +209,7 @@ func (h *HVPSService) HVPSSourceOpen(open bool) error {
 	}
 	command, _, err := h.sendFrame(frame)
 	if err != nil {
+		fmt.Println("设置高压电源开关失败: ", err)
 		return err
 	}
 

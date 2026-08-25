@@ -116,9 +116,10 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-import { HighVoltageConnect, HighVoltageDisconnect,} from '../../wailsjs/go/services/HVPSDevice'
-import { DetectorConnect, DetectorDisconnect,} from '../../wailsjs/go/services/DiffractDevice'
-import { DiffractStagesConnect, DiffractStagesDisconnect,} from '../../wailsjs/go/services/DiffractService'
+// import { HighVoltageConnect, HighVoltageDisconnect,} from '../../wailsjs/go/services/HVPSDevice'
+// import { DetectorConnect, DetectorDisconnect,} from '../../wailsjs/go/services/DiffractDevice'
+// import { DiffractStagesConnect, DiffractStagesDisconnect,} from '../../wailsjs/go/services/DiffractService'
+import { StagesConnect, StagesDisconnect } from '../../../wailsjs/go/components/StageService'
 
 defineProps({
     visible: {
@@ -174,7 +175,7 @@ const toggleDevice = async (deviceType) => {
     }else if (deviceType === 'stage') {
         if (!device.connected) {
             try {
-                await DiffractStagesConnect(device.ip);
+                await StagesConnect(device.ip);
                 device.connected = true;
             } catch (error) {
                 console.error('连接位移台失败:', error);
@@ -182,7 +183,7 @@ const toggleDevice = async (deviceType) => {
             }
         }else{
             try {
-                await DiffractStagesDisconnect();
+                await StagesDisconnect();
                 device.connected = false;
             } catch (error) {
                 console.error('断开位移台失败:', error);
@@ -224,7 +225,7 @@ const refreshDetectors = () => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(15, 23, 42, 0.45);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -234,10 +235,10 @@ const refreshDetectors = () => {
 
 .modal-container {
     width: 480px;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
-    border-radius: 16px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(15, 23, 42, 0.1);
     overflow: hidden;
 }
 
@@ -245,44 +246,53 @@ const refreshDetectors = () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    background: rgba(56, 189, 248, 0.1);
-    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    padding: 12px 16px;
+    background: linear-gradient(180deg, #f1f5f9 0%, #e8eef5 100%);
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .modal-title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
-    color: #38bdf8;
+    color: #0f172a;
+    letter-spacing: 0.02em;
 }
 
 .close-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: rgba(239, 68, 68, 0.2);
-    border-radius: 6px;
-    color: #ef4444;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 4px;
+    color: #64748b;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all 0.18s ease;
 }
-
 .close-btn:hover {
-    background: rgba(239, 68, 68, 0.3);
+    background: #ef4444;
+    border-color: #dc2626;
+    color: #fff;
     transform: rotate(90deg);
+}
+.close-btn svg {
+    width: 14px;
+    height: 14px;
 }
 
 .modal-content {
-    padding: 20px;
+    padding: 16px;
 }
 
 .device-item {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
 }
-
 .device-item:last-child {
     margin-bottom: 0;
 }
@@ -290,66 +300,54 @@ const refreshDetectors = () => {
 .device-label {
     display: block;
     font-size: 12px;
-    color: #94a3b8;
+    color: #0f172a;
     margin-bottom: 8px;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.02em;
 }
 
 .device-input-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
-.device-input {
+.device-input,
+.device-select {
     flex: 1;
-    height: 40px;
-    padding: 0 14px;
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    border-radius: 8px;
-    color: #ffffff;
-    font-size: 14px;
+    height: 30px;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 500;
     outline: none;
-    transition: all 0.2s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
-.device-input:focus {
-    border-color: #38bdf8;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+.device-input:focus,
+.device-select:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
 }
-
 .device-input::placeholder {
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .device-select {
-    flex: 1;
-    height: 40px;
-    padding: 0 14px;
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    border-radius: 8px;
-    color: #ffffff;
-    font-size: 14px;
-    outline: none;
     cursor: pointer;
-    transition: all 0.2s ease;
     appearance: none;
+    -webkit-appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 16px;
+    background-position: right 8px center;
+    background-size: 14px;
+    padding-right: 28px;
 }
-
-.device-select:focus {
-    border-color: #38bdf8;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-}
-
 .device-select option {
-    background: #1e293b;
-    color: #ffffff;
+    background: #fff;
+    color: #0f172a;
 }
 
 .device-buttons {
@@ -358,53 +356,55 @@ const refreshDetectors = () => {
 }
 
 .conn-btn {
-    padding: 10px 16px;
-    background: rgba(56, 189, 248, 0.2);
-    border: 1px solid rgba(56, 189, 248, 0.4);
-    border-radius: 6px;
-    color: #38bdf8;
+    height: 30px;
+    padding: 0 14px;
+    background: #fff;
+    border: 1px solid #0284c7;
+    border-radius: 4px;
+    color: #0284c7;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
+    letter-spacing: 0.02em;
 }
-
 .conn-btn:hover {
-    background: rgba(56, 189, 248, 0.3);
+    background: #0284c7;
+    color: #fff;
 }
-
+.conn-btn:active {
+    transform: translateY(1px);
+}
 .conn-btn.connected {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.4);
-    color: #10b981;
+    background: #f0fdf4;
+    border-color: #15803d;
+    color: #15803d;
 }
-
 .conn-btn.connected:hover {
-    background: rgba(16, 185, 129, 0.3);
+    background: #15803d;
+    color: #fff;
 }
 
 .refresh-btn {
-    width: 40px;
-    height: 40px;
-    background: rgba(148, 163, 184, 0.2);
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    border-radius: 6px;
-    color: #94a3b8;
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #64748b;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
 }
-
 .refresh-btn:hover {
-    background: rgba(148, 163, 184, 0.3);
-    color: #ffffff;
+    border-color: #0284c7;
+    color: #0284c7;
 }
-
 .refresh-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
 .device-status {
@@ -412,97 +412,99 @@ const refreshDetectors = () => {
     align-items: center;
     gap: 6px;
     margin-top: 8px;
-    padding-left: 4px;
+    padding-left: 2px;
 }
 
 .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: #64748b;
+    background: #cbd5e1;
     transition: all 0.2s ease;
 }
-
 .device-status.connected .status-dot {
     background: #10b981;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
 }
 
 .status-text {
     font-size: 11px;
-    color: #64748b;
+    color: #94a3b8;
+    font-weight: 500;
 }
-
 .device-status.connected .status-text {
-    color: #10b981;
+    color: #15803d;
 }
 
 .modal-footer {
     display: flex;
     justify-content: center;
-    gap: 16px;
-    padding: 16px 20px;
-    background: rgba(0, 0, 0, 0.2);
-    border-top: 1px solid rgba(56, 189, 248, 0.1);
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
 }
 
 .action-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 32px;
-    min-width: 150px;
-    max-height: 45px;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
+    gap: 6px;
+    height: 34px;
+    padding: 0 18px;
+    min-width: 120px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    letter-spacing: 1px;
+    transition: all 0.15s ease;
 }
-
 .action-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+    border-color: #075985;
+    color: #fff;
 }
-
 .primary-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.5);
+    background: linear-gradient(180deg, #0369a1 0%, #075985 100%);
+}
+.primary-btn:active {
+    transform: translateY(1px);
 }
 
 .danger-btn {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(220, 38, 38, 0.3) 100%);
-    border: 1px solid rgba(239, 68, 68, 0.5);
-    color: #fca5a5;
+    background: #fff;
+    border-color: #ef4444;
+    color: #dc2626;
 }
-
 .danger-btn:hover {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.4) 0%, rgba(220, 38, 38, 0.4) 100%);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    background: #ef4444;
+    color: #fff;
+}
+.danger-btn:active {
+    transform: translateY(1px);
 }
 
 /* 过渡动画 */
 .modal-enter-active,
 .modal-leave-active {
-    transition: all 0.3s ease;
+    transition: opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
 .modal-enter-from,
 .modal-leave-to {
     opacity: 0;
 }
-
+.modal-enter-active .modal-container,
+.modal-leave-active .modal-container {
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
-    transform: scale(0.95) translateY(-20px);
+    transform: scale(0.96) translateY(-12px);
 }
 </style>

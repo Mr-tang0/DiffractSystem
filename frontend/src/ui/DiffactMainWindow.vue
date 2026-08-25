@@ -107,6 +107,10 @@
                             <span class="info-label">R 角度</span>
                             <span class="info-value highlight">{{ Status.Stage.R.toFixed(4) }} °</span>
                         </div>
+                        <div class="info-row">
+                            <span class="info-label">XX 位置</span>
+                            <span class="info-value highlight">{{ Status.Stage.XX.toFixed(4) }} mm</span>
+                        </div>
                     </div>
                 </div>
 
@@ -277,9 +281,9 @@
                             <label class="switch">
                                 <input
                                     type="checkbox"
-                                    :checked="Status.Power.powerSwitch"
+                                    :checked="hvpsSet.PowerSwitch"
                                     :disabled="hvpsBusy"
-                                    @change="handlePowerSwitch"
+                                    @click.prevent="handlePowerSwitch"
                                 />
                                 <span class="slider"></span>
                             </label>
@@ -289,9 +293,9 @@
                             <label class="switch">
                                 <input
                                     type="checkbox"
-                                    :checked="Status.Power.filamentSwitch"
-                                    :disabled="hvpsBusy || !Status.Power.powerSwitch"
-                                    @change="handleFilamentSwitch"
+                                    :checked="hvpsSet.FilamentSwitch"
+                                    :disabled="hvpsBusy || !hvpsSet.PowerSwitch"
+                                    @click.prevent="handleFilamentSwitch"
                                 />
                                 <span class="slider"></span>
                             </label>
@@ -373,7 +377,7 @@
                     </div>
                     <div class="ctrl-body">
                         <div
-                            v-for="axis in ['X', 'Y', 'Z', 'R']"
+                            v-for="axis in ['X', 'Y', 'Z', 'R', 'XX']"
                             :key="axis"
                             class="axis-row"
                         >
@@ -392,28 +396,14 @@
                                     class="axis-btn cw"
                                     type="button"
                                     :disabled="stageBusy"
-                                    @mousedown="handleAxisPress(axis, 'CW')"
-                                    @mouseup="handleAxisRelease(axis)"
-                                    @mouseleave="handleAxisRelease(axis)"
-                                    @touchstart.prevent="handleAxisPress(axis, 'CW')"
-                                    @touchend.prevent="handleAxisRelease(axis)"
+                                    @click="handleAxisCW(axis, motionTargets[axis])"
                                 >CW</button>
                                 <button
                                     class="axis-btn ccw"
                                     type="button"
                                     :disabled="stageBusy"
-                                    @mousedown="handleAxisPress(axis, 'CCW')"
-                                    @mouseup="handleAxisRelease(axis)"
-                                    @mouseleave="handleAxisRelease(axis)"
-                                    @touchstart.prevent="handleAxisPress(axis, 'CCW')"
-                                    @touchend.prevent="handleAxisRelease(axis)"
+                                    @click="handleAxisCCW(axis, motionTargets[axis])"
                                 >CCW</button>
-                                <button
-                                    class="axis-btn go"
-                                    type="button"
-                                    :disabled="stageBusy"
-                                    @click="handleAxisGo(axis)"
-                                >GO</button>
                             </div>
                         </div>
 
@@ -481,14 +471,21 @@
     <transition name="toast-fade">
         <div v-if="toastMsg" class="toast-hint">{{ toastMsg }}</div>
     </transition>
+
+    <DeviceConnectModal :visible="deviceConnectVisible" @close="deviceConnectVisible = false" />
+
 </template>
 
 <script setup>
 import { reactive, computed, ref, watch } from 'vue'
 import { WindowMinimise, WindowToggleMaximise, Quit, WindowIsMaximised, WindowUnmaximise, EventsOn, EventsOff, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
+import DeviceConnectModal from './modal/DeviceConnectModal.vue'
 import { HVPSSourceOpen, HVPSSetFilamentOpen, HVPSSetFilamentPreheat, HVPSSetFilamentLimit, HVPSSetHV, HVPSSetHI } from '../../wailsjs/go/components/HVPSService'
-import { StagesJOGMove, StagesSTOPMove, StagesRELMove } from '../../wailsjs/go/components/StageService'
-// import { Startup, TODO: SetParams, AcquireImage } from '../../wailsjs/go/components/DetectorService'
+import { StageStop, StageRelMove } from '../../wailsjs/go/components/StageService'
+
+
+// 设备连接模态框显隐
+const deviceConnectVisible = ref(true)
 
 const Status = reactive({
     Power: {
@@ -601,22 +598,19 @@ const hvpsSet = reactive({
     FI: 3.60,
     HV: 40.0,
     HI: 200.0,
+    PowerSwitch: false,
+    FilamentSwitch: false,
 })
 
 async function handlePowerSwitch() {
     if (hvpsBusy.value) return
     hvpsBusy.value = true
-    const next = !Status.Power.powerSwitch
     try {
-        await HVPSSourceOpen(next)
-        Status.Power.powerSwitch = next
-        if (!next) {
-            Status.Power.filamentSwitch = false
-            Status.Power.runing = false
-        }
-        showToast(next ? '放射源已开启' : '放射源已关闭')
+        await HVPSSourceOpen(!hvpsSet.PowerSwitch)
+        hvpsSet.PowerSwitch = !hvpsSet.PowerSwitch
+        showToast(hvpsSet.PowerSwitch ? '放射源已开启' : '放射源已关闭')
     } catch (err) {
-        console.error('handlePowerSwitch fail:', err)
+        console.error('handlePowerSwitch fail:', err, hvpsSet.PowerSwitch)
         showToast('放射源开关失败')
     } finally {
         hvpsBusy.value = false
@@ -626,12 +620,10 @@ async function handlePowerSwitch() {
 async function handleFilamentSwitch() {
     if (hvpsBusy.value) return
     hvpsBusy.value = true
-    const next = !Status.Power.filamentSwitch
     try {
-        await HVPSSetFilamentOpen(next)
-        Status.Power.filamentSwitch = next
-        Status.Power.runing = next
-        showToast(next ? '灯丝已开启' : '灯丝已关闭')
+        await HVPSSetFilamentOpen(!Status.Power.filamentSwitch)
+        Status.Power.filamentSwitch = !Status.Power.filamentSwitch
+        showToast(Status.Power.filamentSwitch ? '灯丝已开启' : '灯丝已关闭')
     } catch (err) {
         console.error('handleFilamentSwitch fail:', err)
         showToast('灯丝开关失败')
@@ -684,45 +676,29 @@ const motionTargets = reactive({
     Y: 0.0,
     Z: 0.0,
     R: 0.0,
+    XX: 0.0,
 })
 
-async function handleAxisPress(axis, dir) {
+async function handleAxisCW(axis,motionTarget) {
+    console.log('handleAxisCW', axis, motionTarget)
     if (stageBusy.value) return
     try {
-        await StagesJOGMove(axis, dir)
+        await StageRelMove(axis, motionTarget)
+    } catch (err) {
+        console.error('StagesRelMove fail', axis, motionTarget, err)
+        showToast(`${axis} ${motionTarget} 启动失败`)
+    }
+}
+
+async function handleAxisCCW(axis,motionTarget) {
+    console.log('handleAxisCCW', axis, motionTarget)
+    if (stageBusy.value) return
+    try {
+        await StageRelMove(axis, -motionTarget)
         Status.Stage.runing = true
     } catch (err) {
-        console.error('StagesJOGMove fail', axis, dir, err)
-        showToast(`${axis} ${dir} 启动失败`)
-    }
-}
-
-async function handleAxisRelease(axis) {
-    try {
-        await StagesSTOPMove(axis)
-        Status.Stage.runing = false
-    } catch (err) {
-        console.error('StagesSTOPMove fail', axis, err)
-    }
-}
-
-async function handleAxisGo(axis) {
-    if (stageBusy.value) return
-    const length = Number(motionTargets[axis])
-    if (!Number.isFinite(length)) {
-        showToast(`${axis} 输入无效`)
-        return
-    }
-    stageBusy.value = true
-    try {
-        await StagesRELMove(axis, length)
-        Status.Stage[axis] = (Number(Status.Stage[axis]) || 0) + length
-        showToast(`${axis} 已移动 ${length}${axis === 'R' ? '°' : 'mm'}`)
-    } catch (err) {
-        console.error('StagesRELMove fail', axis, length, err)
-        showToast(`${axis} 运动失败`)
-    } finally {
-        stageBusy.value = false
+        console.error('StagesRelMove fail', axis, motionTarget, err)
+        showToast(`${axis} ${motionTarget} 启动失败`)
     }
 }
 
@@ -730,7 +706,7 @@ async function handleAllStop() {
     if (stageBusy.value) return
     stageBusy.value = true
     try {
-        await Promise.all(['X', 'Y', 'Z', 'R', 'XX'].map(a => StagesSTOPMove(a).catch(() => {})))
+        await Promise.all(['X', 'Y', 'Z', 'R', 'XX'].map(a => StageStop(a).catch(() => {})))
         Status.Stage.runing = false
         showToast('已全部停止')
     } finally {
@@ -792,6 +768,7 @@ function onImageError(e) {
 
 const toastMsg = ref('')
 const toastTimer = ref(/** @type {any} */(null))
+
 function showToast(msg) {
     toastMsg.value = msg
     if (toastTimer.value) clearTimeout(toastTimer.value)

@@ -1,6 +1,21 @@
 package components
 
-//HD 地址
+type Motor struct {
+	Status     string  `json:"status"` // 状态: Moving, Stopped
+	Position   float32 `json:"position"`
+	Speed      float32 `json:"speed"`
+	Resolution float32 `json:"resolution"`
+}
+
+type MotorDetails struct {
+	X  Motor `json:"x"`
+	Y  Motor `json:"y"`
+	Z  Motor `json:"z"`
+	R  Motor `json:"r"`
+	XX Motor `json:"xx"`
+}
+
+// HD 地址
 const (
 	//X轴
 	X_LEN_HD        uint16 = 0
@@ -29,7 +44,7 @@ const (
 	XX_RESOLUTION_HD uint16 = 46
 )
 
-//M 地址
+// M 地址
 const (
 	//X轴
 	X_MOVE_M uint16 = 0
