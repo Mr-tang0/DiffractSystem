@@ -116,9 +116,8 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-// import { HighVoltageConnect, HighVoltageDisconnect,} from '../../wailsjs/go/services/HVPSDevice'
-// import { DetectorConnect, DetectorDisconnect,} from '../../wailsjs/go/services/DiffractDevice'
-// import { DiffractStagesConnect, DiffractStagesDisconnect,} from '../../wailsjs/go/services/DiffractService'
+import { HighVoltageConnect, HighVoltageDisconnect} from '../../../wailsjs/go/components/HVPSService'
+import { DetectorConnect, DetectorDisconnect,} from '../../../wailsjs/go/components/DetectorService'
 import { StagesConnect, StagesDisconnect } from '../../../wailsjs/go/components/StageService'
 
 defineProps({

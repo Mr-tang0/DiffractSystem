@@ -36,7 +36,13 @@ func (a *App) startup(ctx context.Context) {
 	// 初始化Stage (DiffractService)
 	a.Stage.Startup(a.ctx)
 	// 初始化HVPS
-	a.HVPS.SetContent(a.ctx)
+	a.HVPS.Startup(a.ctx)
+
+	// 初始化Detector事件
+	a.Detector.Startup(a.ctx)
+	// 初始化Detector
+	a.Detector.Init()
+
 }
 
 func (a *App) APIUpdate() (services.GitHubRelease, error) {

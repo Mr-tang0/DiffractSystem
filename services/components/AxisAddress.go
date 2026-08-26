@@ -1,18 +1,20 @@
 package components
 
+type ADDR struct {
+	LEN_HD        uint16 `json:"len_hd"`
+	SPEED_HD      uint16 `json:"speed_hd"`
+	POS_HD        uint16 `json:"pos_hd"`
+	RESOLUTION_HD uint16 `json:"resolution_hd"`
+	MOVE_M        uint16 `json:"move_m"`
+}
+
 type Motor struct {
 	Status     string  `json:"status"` // 状态: Moving, Stopped
 	Position   float32 `json:"position"`
 	Speed      float32 `json:"speed"`
 	Resolution float32 `json:"resolution"`
-}
 
-type MotorDetails struct {
-	X  Motor `json:"x"`
-	Y  Motor `json:"y"`
-	Z  Motor `json:"z"`
-	R  Motor `json:"r"`
-	XX Motor `json:"xx"`
+	ADDR ADDR `json:"addr"`
 }
 
 // HD 地址

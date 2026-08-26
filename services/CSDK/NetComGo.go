@@ -111,7 +111,7 @@ func goOnLinkCallBack(nEvent C.char) C.int {
 
 	if globalNetCom != nil && globalNetCom.ctx != nil {
 		if val == 1 {
-			runtime.EventsEmit(globalNetCom.ctx, "ct_linked", map[string]bool{"ct_linked": true})
+			runtime.EventsEmit(globalNetCom.ctx, "net_linked")
 		}
 		return 1
 	} else {
@@ -126,7 +126,7 @@ func goOnBreakCallBack(nEvent C.char) C.int {
 	fmt.Printf("[Go 捕获成功] 断开连接: %d\n", val)
 	if globalNetCom != nil && globalNetCom.ctx != nil {
 		if val == 1 {
-			runtime.EventsEmit(globalNetCom.ctx, "ct_linked", map[string]bool{"ct_linked": false})
+			runtime.EventsEmit(globalNetCom.ctx, "net_unlinked")
 		}
 	}
 	return 0
@@ -168,16 +168,13 @@ func goOnImageCallBack(nEvent C.char) C.int {
 	}
 	fmt.Println("发送原始数据:")
 	if globalNetCom.ctx != nil {
-		runtime.EventsEmit(globalNetCom.ctx, "ct_raw", rawData)
+		runtime.EventsEmit(globalNetCom.ctx, "net_raw", rawData)
 	}
 	return 0
 }
 
 //export goOnHeartBeatCallBack
 func goOnHeartBeatCallBack(nEvent C.char) C.int {
-	// val := int(nEvent)
-	// fmt.Printf("[Go 捕获成功] 收到心跳事件: %d\n", val)
-
 	// 获取序列号
 	acSnTmp := make([]C.char, 32)
 	C.COM_GetFPsn(&acSnTmp[0])
@@ -206,44 +203,32 @@ func goOnHeartBeatCallBack(nEvent C.char) C.int {
 	// fmt.Printf("[心跳数据] 状态: %s (%d)\n", statusText, cFpCurStat)
 
 	// 获取完整状态信息
-	wifiSignal := 0
 	temp := 0.0
 	hum := 0.0
 	var tFPStat C.TFPStat
 	result := C.COM_GetFPStatus(&tFPStat)
 	if result == 1 {
-		// WiFi信号强度
-		wifiSignal = int(tFPStat.tWifiStatus.ucSignal_level)
-		// fmt.Printf("[心跳数据] WiFi信号强度: %d\n", wifiSignal)
-
 		// 温湿度 (需要除以10)
 		temp = float64(tFPStat.tFpTempHum.Temp) / 10.0
 		hum = float64(tFPStat.tFpTempHum.Hum) / 10.0
-		// fmt.Printf("[心跳数据] 温度: %.1f°C, 湿度: %.1f%%\n", temp, hum)
-
 	} else {
 		fmt.Printf("[心跳数据] 获取状态信息失败\n")
 	}
 
-	// var pxwin C.UINT32
-	// var prepeat C.UINT16
-	// var pbinMode C.CHAR
-	// var psync C.CHAR
-	// C.COM_GetDynamicPara(&pxwin, &prepeat, &pbinMode, &psync)
-	// fmt.Printf("[心跳数据] XWin: %d, 重复次数: %d, 采集模式: %d, 同步模式: %d\n", xwin, prepeat, pbinMode, psync)
-
 	data := map[string]interface{}{
 		"sn":         sn,
 		"mode":       statusText,
-		"wifi":       wifiSignal,
 		"tempreture": temp,
 		"humidity":   hum,
-		"battery":    tFPStat.tBatInfo1.Remain,
 	}
 
 	// fmt.Println("[Go 捕获成功] 获取心跳数据:", data)
 
-	runtime.EventsEmit(globalNetCom.ctx, "ct_heartbeat", data)
+	if globalNetCom != nil && globalNetCom.ctx != nil {
+		go runtime.EventsEmit(globalNetCom.ctx, "net_heartbeat", data)
+	} else {
+		fmt.Println("[Go 捕获成功] 未初始化 NetCom 实例")
+	}
 
 	return 0
 }
@@ -253,7 +238,7 @@ func goOnReadyCallBack(nEvent C.char) C.int {
 	val := int(nEvent)
 	fmt.Printf("[Go 捕获成功] 获取设备就绪状态: %d\n", val)
 	if globalNetCom != nil && globalNetCom.ctx != nil {
-		go runtime.EventsEmit(globalNetCom.ctx, "ct_ready", val)
+		go runtime.EventsEmit(globalNetCom.ctx, "net_ready", val)
 	}
 	return 0
 }
@@ -262,7 +247,7 @@ func goOnReadyCallBack(nEvent C.char) C.int {
 func goOnErrorCallBack(nEvent C.char) C.int {
 	val := int(nEvent)
 	if globalNetCom != nil && globalNetCom.ctx != nil {
-		go runtime.EventsEmit(globalNetCom.ctx, "ct_error", val)
+		go runtime.EventsEmit(globalNetCom.ctx, "net_error", val)
 	}
 	return 0
 }
@@ -333,8 +318,7 @@ func (m *NetCom) COM_StopNet() bool {
 	return C.COM_StopNet() == 1
 }
 
-//设置曝光时间
-
+// 设置曝光时间
 func (n *NetCom) COM_SetExposeTime(exposeTime int) bool {
 	return C.COM_SetXwin(C.UINT32(exposeTime)) == 1
 }
@@ -344,6 +328,59 @@ func (n *NetCom) COM_GetExposeTime() int {
 	var xwin C.UINT32
 	C.COM_GetXwin(&xwin)
 	return int(xwin)
+}
+
+func (n *NetCom) COM_SetDynamicPara(exposeTime int, repeat int, binning string, sync int) bool {
+	switch binning {
+	case "1×1", "1x1":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_1x1, C.CHAR(sync)) == 1
+	case "2×2", "2x2":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_2x2, C.CHAR(sync)) == 1
+	case "3×3", "3x3":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_3x3, C.CHAR(sync)) == 1
+	case "4×4", "4x4":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_4x4, C.CHAR(sync)) == 1
+	case "6×6", "6x6":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_6x6, C.CHAR(sync)) == 1
+	case "8×8", "8x8":
+		return C.COM_SetDynamicPara(C.UINT32(exposeTime), C.UINT16(repeat), C.BINNING_8x8, C.CHAR(sync)) == 1
+	default:
+		fmt.Printf("设置binning失败: %s\n", binning)
+		return false
+	}
+
+}
+
+func (n *NetCom) COM_GetDynamicPara() map[string]interface{} {
+	var pxwin C.UINT32
+	var prepeat C.UINT16
+	var pbinMode C.CHAR
+	var psync C.CHAR
+	C.COM_GetDynamicPara(&pxwin, &prepeat, &pbinMode, &psync)
+	// fmt.Printf("pxwin: %d, prepeat: %d, pbinMode: %c, psync: %c\n", pxwin, prepeat, pbinMode, psync)
+
+	binStr := ""
+	switch pbinMode {
+	case C.BINNING_1x1:
+		binStr = "1x1"
+	case C.BINNING_2x2:
+		binStr = "2x2"
+	case C.BINNING_3x3:
+		binStr = "3x3"
+	case C.BINNING_4x4:
+		binStr = "4x4"
+	case C.BINNING_6x6:
+		binStr = "6x6"
+	case C.BINNING_8x8:
+		binStr = "8x8"
+	}
+
+	return map[string]interface{}{
+		"pxwin":    uint32(pxwin),
+		"prepeat":  uint16(prepeat),
+		"pbinMode": binStr,
+		"psync":    string(psync),
+	}
 }
 
 // 设置Binning

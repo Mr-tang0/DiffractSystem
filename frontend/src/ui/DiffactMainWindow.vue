@@ -68,7 +68,7 @@
                     <div class="card-body">
                         <div class="info-row">
                             <span class="info-label">灯丝电流</span>
-                            <span class="info-value highlight">{{ Status.Power.FI.toFixed(2) }} mA</span>
+                            <span class="info-value highlight">{{ Status.Power.FI.toFixed(2) }} A</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">灯丝预热电压</span>
@@ -93,23 +93,23 @@
                     <div class="card-body">
                         <div class="info-row">
                             <span class="info-label">X 位置</span>
-                            <span class="info-value highlight">{{ Status.Stage.X.toFixed(4) }} mm</span>
+                            <span class="info-value highlight" :class="{ moving: Status.Stage.X_Status === 'Moving' }">{{ Status.Stage.X.toFixed(4) }} mm</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Y 位置</span>
-                            <span class="info-value highlight">{{ Status.Stage.Y.toFixed(4) }} mm</span>
+                            <span class="info-value highlight" :class="{ moving: Status.Stage.Y_Status === 'Moving' }">{{ Status.Stage.Y.toFixed(4) }} mm</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Z 位置</span>
-                            <span class="info-value highlight">{{ Status.Stage.Z.toFixed(4) }} mm</span>
+                            <span class="info-value highlight" :class="{ moving: Status.Stage.Z_Status === 'Moving' }">{{ Status.Stage.Z.toFixed(4) }} mm</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">R 角度</span>
-                            <span class="info-value highlight">{{ Status.Stage.R.toFixed(4) }} °</span>
+                            <span class="info-value highlight" :class="{ moving: Status.Stage.R_Status === 'Moving' }">{{ Status.Stage.R.toFixed(4) }} °</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">XX 位置</span>
-                            <span class="info-value highlight">{{ Status.Stage.XX.toFixed(4) }} mm</span>
+                            <span class="info-value highlight" :class="{ moving: Status.Stage.XX_Status === 'Moving' }">{{ Status.Stage.XX.toFixed(4) }} mm</span>
                         </div>
                     </div>
                 </div>
@@ -134,7 +134,19 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">曝光时间</span>
-                            <span class="info-value highlight">{{ Status.Detector.exposureTime.toFixed(3) }} s</span>
+                            <span class="info-value highlight">{{ Status.Detector.exposureTime}} ms</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">增益</span>
+                            <span class="info-value highlight">{{ Status.Detector.gain }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Binning</span>
+                            <span class="info-value highlight">{{ Status.Detector.binning }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">重复次数</span>
+                            <span class="info-value highlight">{{ Status.Detector.repeatTimes === 0 ? '无限' : Status.Detector.repeatTimes }}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">表面温度</span>
@@ -154,12 +166,11 @@
                 <div class="image-toolbar">
                     <div class="toolbar-left">
                         <span class="toolbar-label">图像总数</span>
-                        <span class="toolbar-count">{{ images.length }}</span>
+                        <span class="toolbar-count">{{ 0 }}</span>
                         <span class="toolbar-label" style="margin-left: 14px;">图像 ID</span>
                         <select
                             class="toolbar-select"
                             v-model="selectedImageId"
-                            :disabled="images.length === 0"
                         >
                             <option
                                 v-for="img in images"
@@ -172,7 +183,6 @@
                         <button
                             class="toolbar-btn save-btn"
                             type="button"
-                            :disabled="images.length === 0"
                             @click="handleSaveImage"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -185,7 +195,6 @@
                         <button
                             class="toolbar-btn delete-btn"
                             type="button"
-                            :disabled="images.length === 0"
                             @click="handleDeleteImage"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -201,24 +210,22 @@
 
                 <!-- 2. 图像显示区域（flex:1） -->
                 <div class="image-viewer">
-                    <template v-if="currentImage">
-                        <img
-                            class="diffract-image"
-                            :src="currentImage.url"
-                            :alt="currentImage.name"
-                            @error="onImageError"
-                        />
-                    </template>
-                    <template v-else>
-                        <div class="empty-viewer">
-                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <circle cx="8.5" cy="8.5" r="1.5"/>
-                                <polyline points="21 15 16 10 5 21"/>
-                            </svg>
-                            <div class="empty-text">无图像输入</div>
-                        </div>
-                    </template>
+                    <div v-if="!DiffractImage" class="empty-viewer">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <circle cx="12" cy="12" r="6"/>
+                            <circle cx="12" cy="12" r="2"/>
+                        </svg>
+                        <div class="empty-text">等待图像数据...</div>
+                    </div>
+                    <img
+                        v-else
+                        class="diffract-image"
+                        :src="DiffractImage"
+                        alt="探测器图像"
+                        :style="{ transform: `rotate(${imageRotateAngle}deg)` }"
+                        @error="onImageError"
+                    />
                 </div>
 
                 <!-- 3. 图像处理栏（高 100px，横向分栏目） -->
@@ -275,8 +282,20 @@
                     <div class="ctrl-header">
                         <span class="ctrl-title">放射源控制</span>
                     </div>
+
+                    
                     <div class="ctrl-body">
                         <div class="ctrl-row">
+                            <span class="ctrl-label">灯丝开关</span>
+                            <label class="switch">
+                                <input
+                                    type="checkbox"
+                                    :checked="hvpsSet.FilamentSwitch"
+                                    :disabled="hvpsBusy"
+                                    @click.prevent="handleFilamentSwitch"
+                                />
+                                <span class="slider"></span>
+                            </label>
                             <span class="ctrl-label">放射开关</span>
                             <label class="switch">
                                 <input
@@ -288,36 +307,10 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
-                        <div class="ctrl-row">
-                            <span class="ctrl-label">灯丝开关</span>
-                            <label class="switch">
-                                <input
-                                    type="checkbox"
-                                    :checked="hvpsSet.FilamentSwitch"
-                                    :disabled="hvpsBusy || !hvpsSet.PowerSwitch"
-                                    @click.prevent="handleFilamentSwitch"
-                                />
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+                        
 
                         <div class="ctrl-divider"></div>
 
-                        <div class="ctrl-row">
-                            <span class="ctrl-label">灯丝电压</span>
-                            <div class="num-input-wrap">
-                                <input
-                                    class="num-input"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    :disabled="hvpsBusy"
-                                    v-model.number="hvpsSet.FV"
-                                    @change="applyHVPS('FV')"
-                                />
-                                <span class="num-unit">V</span>
-                            </div>
-                        </div>
                         <div class="ctrl-row">
                             <span class="ctrl-label">灯丝电流</span>
                             <div class="num-input-wrap">
@@ -327,8 +320,23 @@
                                     step="0.01"
                                     min="0"
                                     :disabled="hvpsBusy"
-                                    v-model.number="hvpsSet.FI"
-                                    @change="applyHVPS('FI')"
+                                    v-model.number="hvpsSet.SI"
+                                    @keyup.enter="handleSetFilamentPreheat"
+                                />
+                                <span class="num-unit">A</span>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <span class="ctrl-label">灯丝电流限制</span>
+                            <div class="num-input-wrap">
+                                <input
+                                    class="num-input"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    :disabled="hvpsBusy"
+                                    v-model.number="hvpsSet.LI"
+                                    @keyup.enter="handleSetFilamentLimit"
                                 />
                                 <span class="num-unit">A</span>
                             </div>
@@ -347,7 +355,7 @@
                                     max="60"
                                     :disabled="hvpsBusy"
                                     v-model.number="hvpsSet.HV"
-                                    @change="applyHVPS('HV')"
+                                    @keyup.enter="handleHVPSSetHV"
                                 />
                                 <span class="num-unit">kV</span>
                             </div>
@@ -362,7 +370,7 @@
                                     min="0"
                                     :disabled="hvpsBusy"
                                     v-model.number="hvpsSet.HI"
-                                    @change="applyHVPS('HI')"
+                                    @keyup.enter="handleHVPSSetHI"
                                 />
                                 <span class="num-unit">uA</span>
                             </div>
@@ -431,7 +439,6 @@
                             <button
                                 class="det-btn params-btn"
                                 type="button"
-                                :disabled="!Status.Detector.runing"
                                 @click="handleDetectorParams"
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -445,7 +452,7 @@
                             <button
                                 class="det-btn capture-btn"
                                 type="button"
-                                :disabled="!Status.Detector.runing"
+
                                 @click="handleDetectorCapture"
                             >
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -464,7 +471,7 @@
             <div class="footer-item-title">版本</div>
             <div class="footer-item-value">1.0.0</div>
             <div class="footer-item-title">作者</div>
-            <div class="footer-item-value">Tang</div>
+            <div class="footer-item-value">TangLifa</div>
         </div>
     </div>
     
@@ -477,11 +484,12 @@
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch } from 'vue'
+import { reactive, computed, ref, watch, onMounted } from 'vue'
 import { WindowMinimise, WindowToggleMaximise, Quit, WindowIsMaximised, WindowUnmaximise, EventsOn, EventsOff, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import DeviceConnectModal from './modal/DeviceConnectModal.vue'
 import { HVPSSourceOpen, HVPSSetFilamentOpen, HVPSSetFilamentPreheat, HVPSSetFilamentLimit, HVPSSetHV, HVPSSetHI } from '../../wailsjs/go/components/HVPSService'
 import { StageStop, StageRelMove } from '../../wailsjs/go/components/StageService'
+import { DetectorCapture } from '../../wailsjs/go/components/DetectorService'
 
 
 // 设备连接模态框显隐
@@ -496,10 +504,15 @@ const Status = reactive({
     },
     Stage: {
         X: 0.000,
+        X_Status: 'Stopped',
         Y: 0.000,
+        Y_Status: 'Stopped',
         Z: 0.000,
+        Z_Status: 'Stopped',
         R: 0.000,
+        R_Status: 'Stopped',
         XX: 0.000,
+        XX_Status: 'Stopped',
     },
     Detector: {
         sn: 'unknown',
@@ -507,95 +520,79 @@ const Status = reactive({
         height: 0,
         tempreture: 0.0,
         humidity: 0.0,
-        exposureTime: 0.0,
+        exposureTime: 0,
+        gain: 0,
+        binning: '',
+        repeatTimes: -1,
         mode: 'null',
     },
     SystemStatus: '正常',
     RunTime: '00:00:00',
     StartTime: '',
 })
+// 图像数据状态
+const DiffractImage = ref('');
+const imageRotateAngle = ref(0.0)
 
-const Target = reactive({
-    Power: {
-        powerSwitch: false,
-        filamentSwitch: false,
-        HV: 0.00,
-        HI: 0.00,
-        FI: 0.00,
-        FV: 0.00,
-    },
-    Stage: {
-        X: 0.000,
-        Y: 0.000,
-        Z: 0.000,
-        R: 0.000,
-        XX: 0.000,
-    },
-    Detector: {
-        Xwin: 0.000,
-        Ywin: 0.000,
-    },
-})
+onMounted(async () =>{
+    EventsOn('motor_heartbeat', (motors) => {
+        Status.Stage.X = motors.X.position
+        Status.Stage.X_Status = motors.X.status
+        Status.Stage.Y = motors.Y.position
+        Status.Stage.Y_Status = motors.Y.status
+        Status.Stage.Z = motors.Z.position
+        Status.Stage.Z_Status = motors.Z.status
+        Status.Stage.R = motors.R.position
+        Status.Stage.R_Status = motors.R.status
+        Status.Stage.XX = motors.XX.position
+        Status.Stage.XX_Status = motors.XX.status
+    });
 
-const alarmActive = computed(() => Status.SystemStatus !== '正常')
+    EventsOn('door', (door) => {
+        if (door) {
+            Status.SystemStatus = '正常'
+        }else{
+            Status.SystemStatus = '报警'
+            showToast('系统报警')
+        }
+    });
 
-const stageConnected = computed(() => !alarmActive.value)
+    EventsOn('hvps_heartbeat', (data) => {
+        Status.Power.HV = data.HV
+        Status.Power.HI = data.HI
+        Status.Power.FI = data.FI
+        Status.Power.FV = data.FV
+    });
 
-const deviceStatusText = computed(() => {
-    if (alarmActive.value) return '报警'
-    if (Status.Detector.runing && Target.Power.powerSwitch) return '已就绪'
-    if (Status.Detector.runing || Target.Power.powerSwitch) return '部分连接'
-    return '未连接'
-})
+    // 监听后端detector_image事件（新图像到达）
+    EventsOn('detector_image', (data) => {
+        console.log("收到新图像")
+        DiffractImage.value = data.image;
+    });
 
-const deviceStatusClass = computed(() => {
-    if (alarmActive.value) return 'status-alarm'
-    if (Status.Detector.runing && Target.Power.powerSwitch) return 'status-ready'
-    if (Status.Detector.runing || Target.Power.powerSwitch) return 'status-partial'
-    return 'status-off'
-})
+    // 监听后端detector_heartbeat事件（新心跳到达）
+    EventsOn('detector_heartbeat', (data) => {
+        Status.Detector.sn = data.sn
+        Status.Detector.tempreture = data.tempreture
+        Status.Detector.humidity = data.humidity
+        Status.Detector.mode = data.mode
 
-const sourceStatusClass = computed(() =>
-    Status.Power.runing ? 'status-running' : 'status-off',
-)
+        Status.Detector.exposureTime = data.expose_time
+        Status.Detector.binning = data.binning
+        Status.Detector.repeatTimes = data.repeat_times
+        Status.Detector.gain = data.gain
+        Status.Detector.width = data.width
+        Status.Detector.height = data.height
+    });
+});
 
-const stageStatusText = computed(() => {
-    if (alarmActive.value) return '报警'
-    if (Status.Stage.runing) return '运行中'
-    if (stageConnected.value) return '静止'
-    return '未连接'
-})
 
-const stageStatusClass = computed(() => {
-    if (alarmActive.value) return 'status-alarm'
-    if (Status.Stage.runing) return 'status-running'
-    if (stageConnected.value) return 'status-idle'
-    return 'status-off'
-})
-
-const detectorStatusText = computed(() => {
-    if (alarmActive.value) return '报警'
-    if (!Status.Detector.runing) return '未连接'
-    const mode = String(Status.Detector.mode || '').toUpperCase()
-    if (mode === 'DST') return 'DST 采集中'
-    if (mode === 'IDLE') return 'IDLE 空闲'
-    return Status.Detector.runing ? '运行中' : '未连接'
-})
-
-const detectorStatusClass = computed(() => {
-    if (alarmActive.value) return 'status-alarm'
-    if (!Status.Detector.runing) return 'status-off'
-    const mode = String(Status.Detector.mode || '').toUpperCase()
-    if (mode === 'DST') return 'status-running'
-    if (mode === 'IDLE') return 'status-idle'
-    return 'status-ready'
-})
 
 // ===================== 放射源控制 =====================
 const hvpsBusy = ref(false)
 const hvpsSet = reactive({
-    FV: 3.50,
-    FI: 3.60,
+    SI: 1.7,
+    LI: 1.7,
     HV: 40.0,
     HI: 200.0,
     PowerSwitch: false,
@@ -621,9 +618,9 @@ async function handleFilamentSwitch() {
     if (hvpsBusy.value) return
     hvpsBusy.value = true
     try {
-        await HVPSSetFilamentOpen(!Status.Power.filamentSwitch)
-        Status.Power.filamentSwitch = !Status.Power.filamentSwitch
-        showToast(Status.Power.filamentSwitch ? '灯丝已开启' : '灯丝已关闭')
+        await HVPSSetFilamentOpen(!hvpsSet.FilamentSwitch)
+        hvpsSet.FilamentSwitch = !hvpsSet.FilamentSwitch
+        showToast(hvpsSet.FilamentSwitch ? '灯丝已开启' : '灯丝已关闭')
     } catch (err) {
         console.error('handleFilamentSwitch fail:', err)
         showToast('灯丝开关失败')
@@ -632,38 +629,53 @@ async function handleFilamentSwitch() {
     }
 }
 
-async function applyHVPS(key) {
+async function handleSetFilamentPreheat() {
+    try {
+        await HVPSSetFilamentPreheat(hvpsSet.SI)
+        showToast(`灯丝预热 ${hvpsSet.SI}`)
+    } catch (err) {
+        console.error('handleSetFilamentPreheat fail:', err)
+        showToast('灯丝预热失败')
+    } finally {
+        hvpsBusy.value = false
+    }
+}
+
+async function handleSetFilamentLimit() {
+    try {
+        await HVPSSetFilamentLimit(hvpsSet.LI)
+        showToast(`灯丝限制 ${hvpsSet.LI}`)
+    } catch (err) {
+        console.error('handleSetFilamentLimit fail:', err)
+        showToast('灯丝限制失败')
+    } finally {
+        hvpsBusy.value = false
+    }
+}
+
+async function handleHVPSSetHV() {
     if (hvpsBusy.value) return
     hvpsBusy.value = true
     try {
-        const v = hvpsSet[key]
-        if (typeof v !== 'number' || !Number.isFinite(v)) return
-        switch (key) {
-            case 'FV': {
-                await HVPSSetFilamentPreheat(v)
-                Status.Power.FV = v
-                break
-            }
-            case 'FI': {
-                await HVPSSetFilamentLimit(v)
-                Status.Power.FI = v
-                break
-            }
-            case 'HV': {
-                await HVPSSetHV(v)
-                Status.Power.HV = v
-                break
-            }
-            case 'HI': {
-                await HVPSSetHI(v)
-                Status.Power.HI = v
-                break
-            }
-        }
-        showToast(`${key} 已设置 ${v}`)
+        await HVPSSetHV(hvpsSet.HV)
+        showToast(`高压电源电压 ${hvpsSet.HV}`)
     } catch (err) {
-        console.error('applyHVPS fail key=', key, err)
-        showToast('HVPS 设置失败')
+        console.error('handleHVPSSetHV fail:', err)
+        showToast('高压电源电压失败')   
+    } finally {
+        hvpsBusy.value = false
+    }
+}
+
+async function handleHVPSSetHI() {
+    if (hvpsBusy.value) return
+    hvpsBusy.value = true
+    try {
+        await HVPSSetHI(hvpsSet.HI)
+        showToast(`高压电源电流 ${hvpsSet.HI}`)
+    } catch (err) {
+        console.error('handleHVPSSetHI fail:', err)
+        showToast('高压电源电流失败')
     } finally {
         hvpsBusy.value = false
     }
@@ -723,48 +735,15 @@ function handleDetectorParams() {
 }
 
 async function handleDetectorCapture() {
-    if (!Status.Detector.runing) return
     try {
-        // TODO: 调用 DetectorService 采集接口，拿到图像 DataURL/路径后 push 到 images
-        console.log('[Detector] capture single frame')
-        const id = nextImageId()
-        images.push({
-            id,
-            name: `shot_${String(id).padStart(3, '0')}.tif`,
-            url: '', // TODO: 实际图像 URL
-            source: 'detector:capture',
-        })
-        selectedImageId.value = id
-        showToast(`拍摄 #${id}`)
+        await DetectorCapture()
     } catch (err) {
         console.error('handleDetectorCapture fail:', err)
         showToast('拍摄失败')
     }
 }
 
-// ===================== 图像状态 =====================
-let __imageIdSeq = 0
-const nextImageId = () => ++__imageIdSeq
 
-const images = reactive(/** @type {{ id: number; name: string; url: string; source?: string }[]} */([]))
-const selectedImageId = ref(/** @type {number|null} */(null))
-const processBusy = ref(false)
-
-const currentImage = computed(() =>
-    images.find(img => img.id === selectedImageId.value) || null,
-)
-
-watch(images, (list) => {
-    if (selectedImageId.value == null || !list.find(i => i.id === selectedImageId.value)) {
-        selectedImageId.value = list.length ? list[list.length - 1].id : null
-    }
-}, { immediate: true })
-
-function onImageError(e) {
-    const img = /** @type {HTMLImageElement} */(e.target)
-    img.style.visibility = 'hidden'
-    console.warn('[image] load failed:', currentImage.value)
-}
 
 const toastMsg = ref('')
 const toastTimer = ref(/** @type {any} */(null))
@@ -775,30 +754,9 @@ function showToast(msg) {
     toastTimer.value = setTimeout(() => { toastMsg.value = '' }, 1800)
 }
 
-async function handleSaveImage() {
-    if (!currentImage.value) return
-    try {
-        if (typeof BrowserOpenURL === 'function' && currentImage.value.url.startsWith('http')) {
-            await BrowserOpenURL(currentImage.value.url)
-        }
-        showToast(`已保存 #${currentImage.value.id}`)
-    } catch (err) {
-        console.error('save error', err)
-        showToast('保存失败')
-    }
-}
-
-function handleDeleteImage() {
-    if (selectedImageId.value == null) return
-    const idx = images.findIndex(i => i.id === selectedImageId.value)
-    if (idx < 0) return
-    const removed = images.splice(idx, 1)[0]
-    showToast(`已删除 #${removed.id}`)
-}
-
 // ===================== 图像处理（调用入口占位）=====================
 async function handleProcess(category, method) {
-    if (!currentImage.value) {
+    if (!DiffractImage.value) {
         showToast('无图像可处理')
         return
     }
@@ -813,14 +771,13 @@ async function handleProcess(category, method) {
         // 调整  : Gamma / Log / Exp  (src/transform/)
         await new Promise(r => setTimeout(r, 250))
 
-        const name = `${currentImage.value.name.split('.')[0]}_${method}`
         const newImg = {
             id: nextImageId(),
-            name: `${name}.tif`,
-            url: currentImage.value.url, // TODO: 用实际处理输出的图像 URL / base64
+            name: `processed_${method}.tif`,
+            url: DiffractImage.value, // TODO: 用实际处理输出的图像 URL / base64
             source: `${category}:${method}`,
         }
-        images.push(newImg)
+        images.value.push(newImg)
         selectedImageId.value = newImg.id
         showToast(`${method} 完成`)
     } catch (err) {
@@ -1037,6 +994,16 @@ async function handleProcess(category, method) {
 
 .info-value.highlight {
     color: #0284c7;
+}
+
+.info-value.moving {
+    color: #16a34a;
+    animation: blink 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes blink {
+    from { opacity: 1; }
+    to { opacity: 0.4; }
 }
 
 .info-value.danger {

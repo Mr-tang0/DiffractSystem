@@ -17,7 +17,7 @@ func main() {
 
 	Detector := components.NewDetectorService()
 	Stage := components.NewStageService()
-	HVPS := components.NewHVPSService()
+	HVPS := components.NewHVPSService(Stage)
 
 	app := NewApp(Stage, Detector, HVPS)
 
@@ -44,3 +44,6 @@ func main() {
 		println("Error:", err.Error())
 	}
 }
+
+// $env:PATH += ";C:\msys64\ucrt64\bin;"
+// $env:PATH += ";D:\appfile\code\vs\DiffractSystem\services\CSDK\SDK"

@@ -49,16 +49,21 @@ type HVPSService struct {
 	ctx     context.Context // 上下文，用于取消操作
 	timeout time.Duration   // 通信超时时间
 	mu      sync.Mutex      // 互斥锁，防止sendFrame并发冲突
+
+	plc            *StageService
+	SourceOpened   bool
+	FilamentOpened bool
 }
 
 // NewHVPSService 创建高压电源设备实例
-func NewHVPSService() *HVPSService {
+func NewHVPSService(plc *StageService) *HVPSService {
 	return &HVPSService{
+		plc:     plc,
 		timeout: 1 * time.Second, // 默认1秒超时
 	}
 }
 
-func (h *HVPSService) SetContent(ctx context.Context) {
+func (h *HVPSService) Startup(ctx context.Context) {
 	h.ctx = ctx
 	if conn := ctx.Value("conn"); conn != nil {
 		h.conn = conn.(net.Conn)
@@ -76,13 +81,25 @@ func (h *HVPSService) HighVoltageConnect(HVPS_ip string, HVPS_port int) error {
 	h.conn = conn
 
 	runtime.EventsEmit(h.ctx, "hvps_linked", map[string]bool{"hvps_linked": true})
-	go h.GetHVPSDetails()
+
+	// 设置为远程模式
+	err = h.HVPSSetRemote(true)
+	if err != nil {
+		return err
+	}
+
+	go h.heartbeat()
 	return nil
 }
 
 // HighVoltageDisconnect 断开连接
 func (h *HVPSService) HighVoltageDisconnect() error {
 	if h.conn != nil {
+		fmt.Println("断开高压电源设备")
+		h.HVPSSetRemote(false)
+		h.HVPSSetFilamentOpen(false)
+		h.HVPSSourceOpen(false)
+
 		err := h.conn.Close()
 		h.conn = nil
 		return err
@@ -95,7 +112,7 @@ func (h *HVPSService) HighVoltageIsConnected() bool {
 	return h.conn != nil
 }
 
-func (h *HVPSService) GetHVPSDetails() {
+func (h *HVPSService) heartbeat() {
 	for {
 		if !h.HighVoltageIsConnected() {
 			fmt.Println("已经断开连接")
@@ -107,7 +124,7 @@ func (h *HVPSService) GetHVPSDetails() {
 			continue
 		}
 		if command == CMD_FEEDBACK_RESP {
-			fmt.Println("获取反馈信息: ", data)
+			// fmt.Println("获取反馈信息: ", data)
 			//解算HVPS数据
 			HVFeedback := uint16(data[2])<<8 | uint16(data[3])
 			CurrentFeedback := uint16(data[4])<<8 | uint16(data[5])
@@ -187,10 +204,12 @@ func (h *HVPSService) HVPSSetHI(HI float32) error {
 	HI_val := int(HI*4095.0/1000.0 + 0.5)
 	frame := buildFrame(CMD_CURRENT_SETTING, []byte{byte(HI_val >> 8), byte(HI_val & 0xFF)})
 
-	command, _, err := h.sendFrame(frame)
+	command, data, err := h.sendFrame(frame)
 	if err != nil {
+		fmt.Println("设置电流失败: ", err)
 		return err
 	}
+	fmt.Println("设置电流: ", command, data)
 
 	if command == CMD_CURRENT_CONF {
 		fmt.Println("设置电流: ", HI)
@@ -215,6 +234,8 @@ func (h *HVPSService) HVPSSourceOpen(open bool) error {
 
 	if command == CMD_HV_ONOFF_CONF {
 		fmt.Println("设置高压电源开关: ", open)
+		h.SourceOpened = open
+		h.CallPLCAlarm()
 		return nil
 	}
 	return errors.New("设置高压电源开关失败")
@@ -267,9 +288,19 @@ func (h *HVPSService) HVPSSetFilamentOpen(FilamentOpen bool) error {
 
 	if command == CMD_FIL_ONOFF_CONF {
 		fmt.Println("设置 filament 开关: ", FilamentOpen)
+		h.FilamentOpened = FilamentOpen
+		h.CallPLCAlarm()
 		return nil
 	}
 	return errors.New("设置 filament 开关失败")
+}
+
+func (h *HVPSService) CallPLCAlarm() error {
+	if h.SourceOpened || h.FilamentOpened {
+		return h.plc.SetAlarmLED(true)
+	} else {
+		return h.plc.SetAlarmLED(false)
+	}
 }
 
 func (h *HVPSService) sendFrame(frame []byte) (command uint16, data []byte, err error) {
