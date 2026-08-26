@@ -30,14 +30,16 @@ type DetectorService struct {
 
 type DetectorHeartbeat struct {
 	SN         string  `json:"sn"`
+	Status     string  `json:"status"`
 	Mode       string  `json:"mode"`
 	Tempreture float32 `json:"tempreture"`
 	Humidity   float32 `json:"humidity"`
 
-	ExposeTime  uint16 `json:"expose_time"`
+	ExposeTime  int    `json:"expose_time"`
 	Binning     string `json:"binning"`
-	RepeatTimes uint16 `json:"repeat_times"`
-	Gain        uint16 `json:"gain"`
+	RepeatTimes int    `json:"repeat_times"`
+	Sync        int    `json:"sync"`
+	Gain        int    `json:"gain"`
 
 	ImageCounts int `json:"image_counts"` // 图像计数
 	Width       int `json:"width"`        // 图像宽度
@@ -48,6 +50,7 @@ func NewDetectorService() *DetectorService {
 	return &DetectorService{
 		heartbeat: DetectorHeartbeat{
 			SN:         "",
+			Status:     "",
 			Mode:       "",
 			Tempreture: 0.0,
 			Humidity:   0.0,
@@ -69,6 +72,7 @@ func (this *DetectorService) Startup(ctx context.Context) error {
 // Init 初始化探测器设备，自动初始化SDK并注册事件回调
 func (this *DetectorService) Init() {
 	fmt.Println("初始化探测器设备")
+	this.heartbeat.Status = "初始化中..."
 	this.detector.RegisterCallback()     // 先注册回调
 	this.detector.COM_Init()             // 再初始化SDK
 	this.detector.COM_StartNet()         // 启动网络监听
@@ -76,11 +80,13 @@ func (this *DetectorService) Init() {
 
 	//监听net_raw事件
 	runtime.EventsOn(this.ctx, "net_raw", func(raw16Data ...interface{}) {
-		fmt.Println("接收到NET原始数据")
+		// fmt.Println("接收到NET原始数据")
 		if len(raw16Data) > 0 {
 			this.handleNETImageEvent(raw16Data[0])
-
 		}
+		// 发送连接成功事件
+		this.heartbeat.Status = "Running"
+		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
 	})
 
 	runtime.EventsOn(this.ctx, "net_heartbeat", func(net ...interface{}) {
@@ -108,7 +114,11 @@ func (this *DetectorService) Init() {
 	runtime.EventsOn(this.ctx, "net_linked", func(linked ...interface{}) {
 		this.CTSetDstModel()
 		this.GetDynamicPara()
+
 		// 发送连接成功事件
+		this.heartbeat.Status = "Running"
+		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
+
 		runtime.EventsEmit(this.ctx, "detector_running", true)
 	})
 
@@ -116,7 +126,9 @@ func (this *DetectorService) Init() {
 
 // DetectorConnect 连接探测器
 func (this *DetectorService) DetectorConnect() error {
-	fmt.Println("连接探测器")
+	this.heartbeat.Status = "连接中..."
+	runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
+
 	flag := this.detector.COM_Open(0)
 	if !flag {
 		return fmt.Errorf("无法连接探测器")
@@ -137,54 +149,57 @@ func (this *DetectorService) DetectorDisconnect() error {
 	this.IsConnecting = false
 	// 发送连接成功事件
 	runtime.EventsEmit(this.ctx, "detector_running", false)
+
+	this.heartbeat.Status = "-"
+	runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
 	return nil
 }
 
 func (this *DetectorService) CTSetDstModel() {
-	fmt.Println("[DST] 设置DST模式")
-
 	this.detector.COM_Dst()
 	time.Sleep(100 * time.Millisecond) //等待DST模式切换完成")
 
 	t := this.detector.COM_GetExposeTime()
-	fmt.Printf("[HST] 曝光时间: %d\n", t)
-
 	this.detector.COM_Dprep()
 	time.Sleep(time.Duration(t+3500) * time.Millisecond) //等待拍背底完成
-
-	fmt.Println("[DST] 启动DST")
 }
 
 func (this *DetectorService) DetectorCapture() {
+	this.heartbeat.Status = "采集中..."
+	runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
 	this.detector.COM_Dacq()
 }
 
 func (this *DetectorService) GetDynamicPara() {
-	fmt.Println("获取动态参数")
 	dynamicPara := this.detector.COM_GetDynamicPara()
+	fmt.Println(dynamicPara)
 
 	//曝光时间
-	if v, ok := dynamicPara["pxwin"].(uint32); ok {
-		this.heartbeat.ExposeTime = uint16(v)
-	}
-	//binning模式
-	if v, ok := dynamicPara["pbinMode"].(string); ok {
-		this.heartbeat.Binning = v
-	}
-	//重复次数
-	if v, ok := dynamicPara["prepeat"].(uint16); ok {
-		this.heartbeat.RepeatTimes = v
-	}
+	this.heartbeat.ExposeTime = dynamicPara["pxwin"].(int)
+	this.heartbeat.Binning = dynamicPara["pbinMode"].(string)
+	this.heartbeat.RepeatTimes = dynamicPara["prepeat"].(int)
+	this.heartbeat.Sync = dynamicPara["psync"].(int)
+
+	this.heartbeat.Gain = this.detector.COM_GetGainValue()
+	fmt.Printf("增益: %d\n", this.heartbeat.Gain)
 }
 
-func (this *DetectorService) SetDynamicPara(exposure int, binning string, repeatTimes uint16, gain uint16) {
-	// this.detector.COM_SetDynamicPara(uint32(exposure), binning, repeatTimes, gain)
+func (this *DetectorService) SetDynamicPara(exposure int, repeatTimes int, binning string, gain int) {
+	this.detector.COM_SetDynamicPara(exposure, repeatTimes, binning, this.heartbeat.Sync)
+
+	if gain != this.heartbeat.Gain {
+		this.heartbeat.Status = "更改配置中..."
+		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
+		this.detector.COM_SetGainValue(gain)
+		this.detector.COM_StopNet()
+		this.detector.COM_StartNet()
+	}
+
 }
 
 func (this *DetectorService) CallImageByID(id int) error {
 	// 检查索引是否超出范围
 	if id < 0 || id >= len(this.imageList) {
-		return fmt.Errorf("图片索引超出范围")
 	}
 	rawData := this.imageList[id]
 	normalizedImg, err := this.normalizeRawImage(rawData)

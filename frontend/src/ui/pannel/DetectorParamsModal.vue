@@ -31,18 +31,17 @@
                         <div class="form-row">
                             <label class="form-label">增益 Gain</label>
                             <div class="form-control">
-                                <input
-                                    class="form-input"
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    v-model.number="form.gain"
-                                />
+                                <select class="form-select" v-model="form.gain">
+                                    <option :value="1">1h:0.6pC</option>
+                                    <option :value="2">2h:1.2pC</option>
+                                    <option :value="4">4h:2.4pC</option>
+                                    <option :value="8">8h:4.8pC</option>
+                                </select>
                             </div>
                         </div>
 
                         <div class="form-row">
-                            <label class="form-label">像素合并 Binning</label>
+                            <label class="form-label">Binning</label>
                             <div class="form-control">
                                 <select class="form-select" v-model="form.binning">
                                     <option value="1x1">1×1</option>
@@ -87,7 +86,7 @@
 
 <script setup>
 import { reactive, ref, watch } from 'vue'
-import { SetDynamicPara } from '../../../wailsjs/go/components/DetectorService'
+import { SetDynamicPara, GetDynamicPara } from '../../../wailsjs/go/components/DetectorService'
 
 const props = defineProps({
     visible: { type: Boolean, default: false },
@@ -131,8 +130,9 @@ async function handleSave() {
     if (saving.value) return
     saving.value = true
     try {
-        // SetDynamicPara(exposure int, binning string, repeatTimes uint16, gain uint16)
-        await SetDynamicPara(form.exposure, form.binning, form.repeatTimes, form.gain)
+        console.log(form)
+        await SetDynamicPara(form.exposure, form.repeatTimes, form.binning, form.gain)
+        await GetDynamicPara()
         emit('saved', { ...form })
         emit('close')
     } catch (err) {

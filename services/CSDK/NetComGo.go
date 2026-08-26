@@ -134,7 +134,7 @@ func goOnBreakCallBack(nEvent C.char) C.int {
 
 //export goOnImageCallBack
 func goOnImageCallBack(nEvent C.char) C.int {
-	fmt.Println("[Go 捕获成功] 收到图像有效事件")
+	// fmt.Println("[Go 捕获成功] 收到图像有效事件")
 	if globalNetCom == nil || globalNetCom.ctx == nil {
 		return 0
 	}
@@ -166,7 +166,7 @@ func goOnImageCallBack(nEvent C.char) C.int {
 		"width":  col,
 		"height": row,
 	}
-	fmt.Println("发送原始数据:")
+	// fmt.Println("发送原始数据:")
 	if globalNetCom.ctx != nil {
 		runtime.EventsEmit(globalNetCom.ctx, "net_raw", rawData)
 	}
@@ -331,16 +331,17 @@ func (n *NetCom) COM_GetExposeTime() int {
 }
 
 func (n *NetCom) COM_GetGainValue() int {
-	var pbinMode C.CHAR
-	var gain C.UCHAR
-	C.COM_GetGainValue(pbinMode, &gain)
-	return int(gain)
+	var cIfs, cRef C.UCHAR
+	C.COM_GetIfsRef(C.BINNING_1x1, &cIfs, &cRef)
+	fmt.Println(cIfs, cRef)
+	return int(cIfs)
 }
 
+// 此函数有问题,谨慎使用
 func (n *NetCom) COM_SetGainValue(gain int) bool {
-	var pbinMode C.CHAR
-	C.COM_GetBinningMode(&pbinMode)
-	return C.COM_SetGainValue(pbinMode, C.UCHAR(gain)) == 1
+	var cIfs, cRef C.UCHAR
+	C.COM_GetIfsRef(C.BINNING_1x1, &cIfs, &cRef)
+	return C.COM_SetIfsRef(C.BINNING_1x1, C.UCHAR(gain), cRef) == 1
 }
 
 func (n *NetCom) COM_SetDynamicPara(exposeTime int, repeat int, binning string, sync int) bool {
@@ -389,10 +390,10 @@ func (n *NetCom) COM_GetDynamicPara() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"pxwin":    uint32(pxwin),
-		"prepeat":  uint16(prepeat),
+		"pxwin":    int(pxwin),
+		"prepeat":  int(prepeat),
 		"pbinMode": binStr,
-		"psync":    string(psync),
+		"psync":    int(psync),
 	}
 }
 

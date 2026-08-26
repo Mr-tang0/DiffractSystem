@@ -1,7 +1,7 @@
 <template>
     <div class="main-window">
         <div class="title-bar">
-            <div class="title">NIMTE 衍射仪作业系统</div>
+            <div class="title">DIFFRACT 衍射仪作业系统</div>
             <div class='window-actions'>
                     <button class="window-btn connect-btn" type="button" title="设备连接" @click="deviceConnectVisible = true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -87,13 +87,14 @@
                     </div>
                     <div class="card-body">
                         <div class="info-row">
+                            <span class="info-label">灯丝电压</span>
+                            <span class="info-value" :class="{ highlight: Status.Power.FV > 0.1, 'alarm-value': Status.Power.FV > 0.1 }">{{ Status.Power.FV.toFixed(2) }} V</span>
+                        </div>
+                        <div class="info-row">
                             <span class="info-label">灯丝电流</span>
                             <span class="info-value" :class="{ highlight: Status.Power.FI > 0.1, 'alarm-value': Status.Power.FI > 0.1 }">{{ Status.Power.FI.toFixed(2) }} A</span>
                         </div>
-                        <div class="info-row">
-                            <span class="info-label">灯丝预热电压</span>
-                            <span class="info-value" :class="{ highlight: Status.Power.FV > 0.1, 'alarm-value': Status.Power.FV > 0.1 }">{{ Status.Power.FV.toFixed(2) }} V</span>
-                        </div>
+
                         <div class="info-row">
                             <span class="info-label">高压电压</span>
                             <span class="info-value" :class="{ highlight: Status.Power.HV > 0.1, 'alarm-value': Status.Power.HV > 0.1 }">{{ Status.Power.HV.toFixed(2) }} kV</span>
@@ -145,8 +146,12 @@
                             <span class="info-value">{{ Status.Detector.sn }}</span>
                         </div>
                         <div class="info-row">
+                            <span class="info-label">探测器状态</span>
+                            <span class="info-value">{{Status.Detector.status}}</span>
+                        </div>
+                        <div class="info-row">
                             <span class="info-label">当前模式</span>
-                            <span class="info-value highlight">{{ Status.Detector.mode === 'null' ? '—' : Status.Detector.mode }}</span>
+                            <span class="info-value highlight">{{ Status.Detector.mode === 'null' ? '-' : Status.Detector.mode }}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">图像尺寸</span>
@@ -166,7 +171,7 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">重复次数</span>
-                            <span class="info-value highlight">{{ Status.Detector.repeatTimes === 0 ? '无限' : Status.Detector.repeatTimes }}</span>
+                            <span class="info-value highlight">{{ Status.Detector.repeatTimes === 0 ? '持续' : Status.Detector.repeatTimes }}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">表面温度</span>
@@ -250,6 +255,16 @@
                         :style="{ transform: `rotate(${imageRotateAngle}deg)` }"
                         @error="onImageError"
                     />
+
+                    <!-- 右下角悬浮衍射谱图像栏-->
+                    <div class="viewer-pip" v-if="DiffractImage">
+                        <img
+                            class="pip-image"
+                            src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='160' viewBox='0 0 240 160'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231e3a5f'/><stop offset='1' stop-color='%23051018'/></linearGradient><radialGradient id='r' cx='50%' cy='50%' r='55%'><stop offset='0' stop-color='%2367e8f9' stop-opacity='0.9'/><stop offset='0.4' stop-color='%230ea5e9' stop-opacity='0.6'/><stop offset='1' stop-color='%230ea5e9' stop-opacity='0'/></radialGradient></defs><rect width='240' height='160' fill='url(%23g)'/><circle cx='120' cy='80' r='55' fill='url(%23r)'/><circle cx='120' cy='80' r='6' fill='%23f0f9ff'/><g stroke='%2338bdf8' stroke-width='1' opacity='0.5'><line x1='120' y1='20' x2='120' y2='140'/><line x1='40' y1='80' x2='200' y2='80'/></g><text x='12' y='20' font-family='Arial' font-size='11' fill='%2394a3b8'>示例图像</text><text x='12' y='150' font-family='Arial' font-size='9' fill='%2364748b'>120×80</text></svg>"
+                            alt="示例图像"
+                        />
+                        <span class="pip-label">衍射谱</span>
+                    </div>
                 </div>
 
                 <!-- 3. 图像处理栏（高 100px，横向分栏目） -->
@@ -346,7 +361,7 @@
                         <div class="ctrl-divider"></div>
 
                         <div class="ctrl-row">
-                            <span class="ctrl-label">灯丝电流</span>
+                            <span class="ctrl-label">灯丝设置电流</span>
                             <div class="num-input-wrap">
                                 <input
                                     class="num-input"
@@ -379,7 +394,7 @@
                         <div class="ctrl-divider"></div>
 
                         <div class="ctrl-row">
-                            <span class="ctrl-label">高压电压</span>
+                            <span class="ctrl-label">高压电源电压</span>
                             <div class="num-input-wrap">
                                 <input
                                     class="num-input"
@@ -395,7 +410,7 @@
                             </div>
                         </div>
                         <div class="ctrl-row">
-                            <span class="ctrl-label">高压电流</span>
+                            <span class="ctrl-label">高压电源电流</span>
                             <div class="num-input-wrap">
                                 <input
                                     class="num-input"
@@ -424,7 +439,16 @@
                             class="axis-row"
                         >
                             <span class="axis-label">{{ axis }}</span>
-                            <div class="axis-value-wrap">
+                           
+                            <div class="axis-btns">
+                                <button
+                                    class="axis-btn cw"
+                                    type="button"
+                                    :disabled="stageBusy"
+                                    @click="handleAxisCW(axis, motionTargets[axis])"
+                                >CW</button>
+
+                                 <div class="axis-value-wrap">
                                 <input
                                     class="num-input axis-input"
                                     type="number"
@@ -433,13 +457,7 @@
                                 />
                                 <span class="num-unit">{{ axis === 'R' ? '°' : 'mm' }}</span>
                             </div>
-                            <div class="axis-btns">
-                                <button
-                                    class="axis-btn cw"
-                                    type="button"
-                                    :disabled="stageBusy"
-                                    @click="handleAxisCW(axis, motionTargets[axis])"
-                                >CW</button>
+
                                 <button
                                     class="axis-btn ccw"
                                     type="button"
@@ -493,7 +511,7 @@
                                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                                     <circle cx="12" cy="13" r="4"/>
                                 </svg>
-                                <span>拍摄</span>
+                                <span>图像捕获</span>
                             </button>
                         </div>
                     </div>
@@ -502,10 +520,25 @@
             
         </div>
         <div class="footer">
-            <div class="footer-item-title">版本</div>
-            <div class="footer-item-value">1.0.0</div>
-            <div class="footer-item-title">作者</div>
-            <div class="footer-item-value">TangLifa</div>
+            <div class="footer-group">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span class="footer-item-title">版本</span>
+                <span class="footer-item-value">1.0.0</span>
+            </div>
+            <span class="footer-divider"></span>
+            <div class="footer-group">
+                <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="footer-item-title">作者</span>
+                <span class="footer-item-value">TangLifa</span>
+            </div>
+            <span class="footer-divider"></span>
+            <span class="footer-copyright">© 2026 DiffractSystem</span>
         </div>
     </div>
     
@@ -583,13 +616,14 @@ const Status = reactive({
     Detector: {
         running: false,
         sn: 'unknown',
+        status:'-',
         width: 0,
         height: 0,
         tempreture: 0.0,
         humidity: 0.0,
         exposureTime: 0,
         gain: 0,
-        binning: '',
+        binning: '-',
         repeatTimes: -1,
         mode: 'null',
     },
@@ -651,11 +685,13 @@ onMounted(async () =>{
     EventsOn('detector_image', (data) => {
         console.log("收到新图像")
         DiffractImage.value = data.image;
+        selectedImageId.value = imagesCounts.value
     });
 
     // 监听后端detector_heartbeat事件（新心跳到达）
     EventsOn('detector_heartbeat', (data) => {
         Status.Detector.sn = data.sn
+        Status.Detector.status = data.status
         Status.Detector.tempreture = data.tempreture
         Status.Detector.humidity = data.humidity
         Status.Detector.mode = data.mode
@@ -684,7 +720,7 @@ const hvpsSet = reactive({
     SI: 1.7,
     LI: 1.7,
     HV: 40.0,
-    HI: 200.0,
+    HI: 800.0,
     PowerSwitch: false,
     FilamentSwitch: false,
 })
@@ -774,11 +810,11 @@ async function handleHVPSSetHI() {
 // ===================== 运动控制 =====================
 const stageBusy = ref(false)
 const motionTargets = reactive({
-    X: 0.0,
-    Y: 0.0,
-    Z: 0.0,
-    R: 0.0,
-    XX: 0.0,
+    X: 1.0,
+    Y: 1.0,
+    Z: 1.0,
+    R: 1.0,
+    XX: 1.0,
 })
 
 async function handleAxisCW(axis,motionTarget) {
@@ -1327,6 +1363,46 @@ async function handleProcess(category, method) {
     letter-spacing: 0.04em;
 }
 
+/* ====== 右下角悬浮示例图像栏（120×80） ====== */
+.viewer-pip {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 200px;
+    height: 150px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(2, 132, 199, 0.45);
+    box-shadow:
+        0 6px 18px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    background: #0f172a;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.pip-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pip-label {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #f1f5f9;
+    background: linear-gradient(180deg, rgba(2, 132, 199, 0.85), rgba(14, 165, 233, 0.85));
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+}
+
 /* ====== 3. 图像处理栏（高 100px，横向栏目） ====== */
 .process-toolbar {
     flex: 0 0 120px;
@@ -1489,7 +1565,7 @@ async function handleProcess(category, method) {
 /* ====== 左侧/右侧面板自定义滚动条（美化 + 占位小） ====== */
 .left-panel,
 .right-panel {
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
 }
@@ -1848,8 +1924,47 @@ async function handleProcess(category, method) {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #b8bec5;
-    gap: 12px;
+    background: #b8bec5;
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 -1px 4px rgba(15, 23, 42, 0.08);
+    gap: 14px;
+    color: #334155;
+    font-size: 12px;
+    user-select: none;
+}
+
+.footer-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.footer-icon {
+    width: 14px;
+    height: 14px;
+    color: #0284c7;
+}
+
+.footer-item-title {
+    color: #475569;
+    font-weight: 500;
+}
+
+.footer-item-value {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.footer-divider {
+    width: 1px;
+    height: 14px;
+    background: rgba(15, 23, 42, 0.15);
+}
+
+.footer-copyright {
+    color: #64748b;
+    font-size: 11px;
+    margin-left: 4px;
 }
 
 </style>
