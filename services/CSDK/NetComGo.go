@@ -330,6 +330,19 @@ func (n *NetCom) COM_GetExposeTime() int {
 	return int(xwin)
 }
 
+func (n *NetCom) COM_GetGainValue() int {
+	var pbinMode C.CHAR
+	var gain C.UCHAR
+	C.COM_GetGainValue(pbinMode, &gain)
+	return int(gain)
+}
+
+func (n *NetCom) COM_SetGainValue(gain int) bool {
+	var pbinMode C.CHAR
+	C.COM_GetBinningMode(&pbinMode)
+	return C.COM_SetGainValue(pbinMode, C.UCHAR(gain)) == 1
+}
+
 func (n *NetCom) COM_SetDynamicPara(exposeTime int, repeat int, binning string, sync int) bool {
 	switch binning {
 	case "1×1", "1x1":

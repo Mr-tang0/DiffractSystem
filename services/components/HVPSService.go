@@ -79,14 +79,13 @@ func (h *HVPSService) HighVoltageConnect(HVPS_ip string, HVPS_port int) error {
 		return err
 	}
 	h.conn = conn
-
-	runtime.EventsEmit(h.ctx, "hvps_linked", map[string]bool{"hvps_linked": true})
-
 	// 设置为远程模式
 	err = h.HVPSSetRemote(true)
 	if err != nil {
 		return err
 	}
+
+	runtime.EventsEmit(h.ctx, "hvps_running", true)
 
 	go h.heartbeat()
 	return nil
@@ -104,7 +103,8 @@ func (h *HVPSService) HighVoltageDisconnect() error {
 		h.conn = nil
 		return err
 	}
-	runtime.EventsEmit(h.ctx, "hvps_linked", map[string]bool{"hvps_linked": false})
+	// 发送连接成功事件
+	runtime.EventsEmit(h.ctx, "hvps_running", false)
 	return errors.New("未连接")
 }
 

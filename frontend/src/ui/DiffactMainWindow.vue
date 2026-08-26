@@ -166,17 +166,19 @@
                 <div class="image-toolbar">
                     <div class="toolbar-left">
                         <span class="toolbar-label">图像总数</span>
-                        <span class="toolbar-count">{{ 0 }}</span>
+                        <span class="toolbar-count">{{ imagesCounts}}</span>
                         <span class="toolbar-label" style="margin-left: 14px;">图像 ID</span>
                         <select
                             class="toolbar-select"
                             v-model="selectedImageId"
+                            @change="handleSelectImageByID"
+                            :disabled="imagesCounts === 0"
                         >
                             <option
-                                v-for="img in images"
-                                :key="img.id"
-                                :value="img.id"
-                            >#{{ img.id }} · {{ img.name }}</option>
+                                v-for="id in imagesCounts"
+                                :key="id"
+                                :value="id"
+                            >#第{{ id }}张图片</option>
                         </select>
                     </div>
                     <div class="toolbar-right">
@@ -184,6 +186,7 @@
                             class="toolbar-btn save-btn"
                             type="button"
                             @click="handleSaveImage"
+                            :disabled="selectedImageId === 0"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -196,6 +199,7 @@
                             class="toolbar-btn delete-btn"
                             type="button"
                             @click="handleDeleteImage"
+                            :disabled="selectedImageId === 0"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"/>
@@ -271,6 +275,16 @@
                             <button class="proc-btn" type="button" @click="handleProcess('adjust', 'Exp')">指数变换</button>
                         </div>
                     </div>
+
+                    <!-- 图像归一化 -->
+                    <div class="process-group">
+                        <div class="group-title">图像归一化</div>
+                        <div class="group-btns">
+                            <input class="proc-btn" type="text" @keyup.enter="handleProcess('normalize', 'ImageMinVal')" placeholder="输入最小值">
+                            <input class="proc-btn" type="text" @keyup.enter="handleProcess('normalize', 'ImageMaxVal')" placeholder="输入最大值">
+                        </div>
+                    </div>
+
                 </div>
 
                 
@@ -489,7 +503,7 @@ import { WindowMinimise, WindowToggleMaximise, Quit, WindowIsMaximised, WindowUn
 import DeviceConnectModal from './modal/DeviceConnectModal.vue'
 import { HVPSSourceOpen, HVPSSetFilamentOpen, HVPSSetFilamentPreheat, HVPSSetFilamentLimit, HVPSSetHV, HVPSSetHI } from '../../wailsjs/go/components/HVPSService'
 import { StageStop, StageRelMove } from '../../wailsjs/go/components/StageService'
-import { DetectorCapture } from '../../wailsjs/go/components/DetectorService'
+import { DetectorCapture, CallImageByID, DelImageByID, ClearImageList, SaveImageByID } from '../../wailsjs/go/components/DetectorService'
 
 
 // 设备连接模态框显隐
@@ -533,6 +547,11 @@ const Status = reactive({
 // 图像数据状态
 const DiffractImage = ref('');
 const imageRotateAngle = ref(0.0)
+const selectedImageId = ref(0)
+const imagesCounts = ref(0)
+
+
+
 
 onMounted(async () =>{
     EventsOn('motor_heartbeat', (motors) => {
@@ -583,6 +602,8 @@ onMounted(async () =>{
         Status.Detector.gain = data.gain
         Status.Detector.width = data.width
         Status.Detector.height = data.height
+
+        imagesCounts.value = data.image_counts
     });
 });
 
@@ -744,6 +765,7 @@ async function handleDetectorCapture() {
 }
 
 
+// ===================== Toast =====================
 
 const toastMsg = ref('')
 const toastTimer = ref(/** @type {any} */(null))
@@ -755,6 +777,36 @@ function showToast(msg) {
 }
 
 // ===================== 图像处理（调用入口占位）=====================
+async function handleSelectImageByID() {
+    try {
+        await CallImageByID(selectedImageId.value)
+        showToast(`已选择图像 ${selectedImageId.value}`)
+    } catch (err) {
+        console.error('handleSelectImageByID fail:', err)
+        showToast('选择失败')
+    }
+}
+
+async function handleSaveImage() {
+    try {
+        await SaveImageByID(selectedImageId.value)
+        showToast('保存成功')
+    } catch (err) {
+        console.error('handleSaveImage fail:', err)
+        showToast('保存失败')
+    }
+}
+
+async function handleDeleteImage() {
+    try {
+        await DelImageByID(selectedImageId.value)
+        showToast('删除成功')
+    } catch (err) {
+        console.error('handleDeleteImage fail:', err)
+        showToast('删除失败')
+    }
+}
+
 async function handleProcess(category, method) {
     if (!DiffractImage.value) {
         showToast('无图像可处理')

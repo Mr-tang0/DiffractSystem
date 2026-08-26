@@ -33,16 +33,17 @@ func (a *App) startup(ctx context.Context) {
 	a.updater = &services.UpdateService{}
 	a.ctx = ctx
 
+	if !a.GetSoftwareLicense() {
+		return
+	}
 	// 初始化Stage (DiffractService)
 	a.Stage.Startup(a.ctx)
 	// 初始化HVPS
 	a.HVPS.Startup(a.ctx)
-
 	// 初始化Detector事件
 	a.Detector.Startup(a.ctx)
 	// 初始化Detector
 	a.Detector.Init()
-
 }
 
 func (a *App) APIUpdate() (services.GitHubRelease, error) {
@@ -56,4 +57,9 @@ func (a *App) APIUpdate() (services.GitHubRelease, error) {
 
 func (a *App) GetCachedRelease() services.GitHubRelease {
 	return a.updater.GetCachedRelease()
+}
+
+// 获取软件授权状态
+func (a *App) GetSoftwareLicense() bool {
+	return true
 }

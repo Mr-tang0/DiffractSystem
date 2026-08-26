@@ -105,6 +105,9 @@ func (this *StageService) StagesConnect(ip string) error {
 		return err
 	}
 	this.connected = true
+	// 发送连接成功事件
+	runtime.EventsEmit(this.ctx, "stage_running", true)
+
 	go this.heartbeat()
 	return nil
 }
@@ -116,6 +119,8 @@ func (this *StageService) StagesDisconnect() error {
 	}
 	this.plc.Close()
 	this.connected = false
+	// 发送连接成功事件
+	runtime.EventsEmit(this.ctx, "stage_running", false)
 	return nil
 }
 
