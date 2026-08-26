@@ -2,7 +2,20 @@
     <div class="main-window">
         <div class="title-bar">
             <div class="title">NIMTE 衍射仪作业系统</div>
-            <div class='window-actions'>    
+            <div class='window-actions'>
+                    <button class="window-btn connect-btn" type="button" title="设备连接" @click="deviceConnectVisible = true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                        </svg>
+                    </button>
+                    <button class="window-btn settings-btn" type="button" title="系统设置" @click="systemSettingsVisible = true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                    <span class="title-divider"></span>
                     <button class="window-btn minimize-btn" type="button" title="最小化" @click="WindowMinimise">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="4" y1="12" x2="22" y2="12"/>
@@ -31,20 +44,20 @@
                     <div class="card-body">
                         <div class="info-row">
                             <span class="info-label">控制主机</span>
-                            <span class="info-value" :class="{ highlight: Status.Detector.runing }">
-                                {{ Status.Detector.runing ? '已连接' : '未连接' }}
+                            <span class="info-value" :class="{ highlight: Status.Stage.running }">
+                                {{ Status.Stage.running ? '已连接' : '未连接' }}
                             </span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">高压电源</span>
-                            <span class="info-value" :class="{ highlight: Status.Power.powerSwitch }">
-                                {{ Status.Power.powerSwitch ? '已开启' : '未开启' }}
+                            <span class="info-value" :class="{ highlight: Status.Power.running }">
+                                {{ Status.Power.running ? '已开启' : '未开启' }}
                             </span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">探测器</span>
-                            <span class="info-value" :class="{ highlight: Status.Detector.runing }">
-                                {{ Status.Detector.runing ? '已连接' : '未连接' }}
+                            <span class="info-value" :class="{ highlight: Status.Detector.running }">
+                                {{ Status.Detector.running ? '已连接' : '未连接' }}
                             </span>
                         </div>
                         <div class="info-row">
@@ -64,23 +77,30 @@
                 <div class="info-card">
                     <div class="card-header">
                         <span class="card-title">放射源状态</span>
+                        <!-- <svg class="radiation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+                            <path d="M12 9.5a2.5 2.5 0 0 0-2.17-3.75A7 7 0 0 0 5 11"/>
+                            <path d="M12 14.5a2.5 2.5 0 0 1-2.17 3.75A7 7 0 0 0 12 19a7 7 0 0 0 2.17-.75A2.5 2.5 0 0 1 12 14.5z"/>
+                            <path d="M14.17 12a2.5 2.5 0 0 0 1.08-3.25A7 7 0 0 1 19 11a7 7 0 0 1-.43 2.5A2.5 2.5 0 0 1 14.17 12z"/>
+                            <path d="M9.83 12a2.5 2.5 0 0 1-1.08 3.25A7 7 0 0 1 5 13a7 7 0 0 1 .43-2.5A2.5 2.5 0 0 1 9.83 12z"/>
+                        </svg> -->
                     </div>
                     <div class="card-body">
                         <div class="info-row">
                             <span class="info-label">灯丝电流</span>
-                            <span class="info-value highlight">{{ Status.Power.FI.toFixed(2) }} A</span>
+                            <span class="info-value" :class="{ highlight: Status.Power.FI > 0.1, 'alarm-value': Status.Power.FI > 0.1 }">{{ Status.Power.FI.toFixed(2) }} A</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">灯丝预热电压</span>
-                            <span class="info-value highlight">{{ Status.Power.FV.toFixed(2) }} V</span>
+                            <span class="info-value" :class="{ highlight: Status.Power.FV > 0.1, 'alarm-value': Status.Power.FV > 0.1 }">{{ Status.Power.FV.toFixed(2) }} V</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">高压电压</span>
-                            <span class="info-value highlight">{{ Status.Power.HV.toFixed(2) }} kV</span>
+                            <span class="info-value" :class="{ highlight: Status.Power.HV > 0.1, 'alarm-value': Status.Power.HV > 0.1 }">{{ Status.Power.HV.toFixed(2) }} kV</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">高压电流</span>
-                            <span class="info-value highlight">{{ Status.Power.HI.toFixed(2) }} uA</span>
+                            <span class="info-value" :class="{ highlight: Status.Power.HI > 0.1, 'alarm-value': Status.Power.HI > 0.1 }">{{ Status.Power.HI.toFixed(2) }} uA</span>
                         </div>
                     </div>
                 </div>
@@ -495,28 +515,60 @@
 
     <DeviceConnectModal :visible="deviceConnectVisible" @close="deviceConnectVisible = false" />
 
+    <DetectorParamsModal
+        :visible="detectorParamsVisible"
+        :exposure-time="Status.Detector.exposureTime"
+        :gain="Status.Detector.gain"
+        :binning="Status.Detector.binning"
+        :repeat-times="Status.Detector.repeatTimes"
+        @close="detectorParamsVisible = false"
+        @saved="(form) => {
+            Status.Detector.exposureTime = form.exposure
+            Status.Detector.gain = form.gain
+            Status.Detector.binning = form.binning
+            Status.Detector.repeatTimes = form.repeatTimes
+            showToast('探测器参数已保存')
+        }"
+    />
+
+    <SystemAlarmModal
+        :visible="systemAlarmVisible"
+        @close="systemAlarmVisible = false"
+    />
+
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch, onMounted } from 'vue'
-import { WindowMinimise, WindowToggleMaximise, Quit, WindowIsMaximised, WindowUnmaximise, EventsOn, EventsOff, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import DeviceConnectModal from './modal/DeviceConnectModal.vue'
+import DetectorParamsModal from './pannel/DetectorParamsModal.vue'
+import SystemAlarmModal from './modal/SystemAlarmModal.vue'
+
+import { reactive, ref, onMounted } from 'vue'
+import { WindowMinimise, WindowToggleMaximise, Quit,EventsOn,} from '../../wailsjs/runtime/runtime'
 import { HVPSSourceOpen, HVPSSetFilamentOpen, HVPSSetFilamentPreheat, HVPSSetFilamentLimit, HVPSSetHV, HVPSSetHI } from '../../wailsjs/go/components/HVPSService'
 import { StageStop, StageRelMove } from '../../wailsjs/go/components/StageService'
-import { DetectorCapture, CallImageByID, DelImageByID, ClearImageList, SaveImageByID } from '../../wailsjs/go/components/DetectorService'
+import { DetectorCapture, CallImageByID, DelImageByID, SaveImageByID } from '../../wailsjs/go/components/DetectorService'
 
 
 // 设备连接模态框显隐
 const deviceConnectVisible = ref(true)
+// 系统设置模态框显隐
+const systemSettingsVisible = ref(false)
+// 探测器参数模态框显隐
+const detectorParamsVisible = ref(false)
+// 系统报警模态框显隐
+const systemAlarmVisible = ref(false)
 
 const Status = reactive({
     Power: {
+        running: false,
         HV: 0.00,
         HI: 0.00,
         FI: 0.00,
         FV: 0.00,
     },
     Stage: {
+        running: false,
         X: 0.000,
         X_Status: 'Stopped',
         Y: 0.000,
@@ -529,6 +581,7 @@ const Status = reactive({
         XX_Status: 'Stopped',
     },
     Detector: {
+        running: false,
         sn: 'unknown',
         width: 0,
         height: 0,
@@ -542,7 +595,6 @@ const Status = reactive({
     },
     SystemStatus: '正常',
     RunTime: '00:00:00',
-    StartTime: '',
 })
 // 图像数据状态
 const DiffractImage = ref('');
@@ -552,8 +604,18 @@ const imagesCounts = ref(0)
 
 
 
-
+//===================== 系统状态更新 ======================
 onMounted(async () =>{
+    EventsOn('stage_running', (running) => {
+        Status.Stage.running = running
+    });
+    EventsOn('detector_running', (running) => {
+        Status.Detector.running = running
+    });
+    EventsOn('hvps_running', (running) => {
+        Status.Power.running = running
+    });
+
     EventsOn('motor_heartbeat', (motors) => {
         Status.Stage.X = motors.X.position
         Status.Stage.X_Status = motors.X.status
@@ -570,9 +632,11 @@ onMounted(async () =>{
     EventsOn('door', (door) => {
         if (door) {
             Status.SystemStatus = '正常'
+            systemAlarmVisible.value = false
         }else{
             Status.SystemStatus = '报警'
             showToast('系统报警')
+            systemAlarmVisible.value = true
         }
     });
 
@@ -605,6 +669,11 @@ onMounted(async () =>{
 
         imagesCounts.value = data.image_counts
     });
+
+    //计时器，每秒更新一次运行时间：YYYY-MM-DD HH:mm:ss
+    setInterval(() => {
+        Status.RunTime = new Date().toLocaleString().substring(0, 19)
+    }, 1000);
 });
 
 
@@ -749,10 +818,11 @@ async function handleAllStop() {
 
 // ===================== 探测器控制 =====================
 function handleDetectorParams() {
-    if (!Status.Detector.runing) return
-    // TODO: 打开参数设置弹窗 / DetectorPanel
-    console.log('[Detector] open params panel')
-    showToast('参数设置 TODO')
+    if (Status.Detector.mode === 'null' || Status.Detector.sn === 'unknown') {
+        showToast('探测器未连接')
+        return
+    }
+    detectorParamsVisible.value = true
 }
 
 async function handleDetectorCapture() {
@@ -807,6 +877,8 @@ async function handleDeleteImage() {
     }
 }
 
+
+// ===================== Python图像处理 =====================
 async function handleProcess(category, method) {
     if (!DiffractImage.value) {
         showToast('无图像可处理')
@@ -872,12 +944,21 @@ async function handleProcess(category, method) {
     color: #617d88;
 }
 
-.window-actions { 
-    display: flex; 
-    align-items: center; 
+.title-divider {
+    width: 1px;
+    height: 18px;
+    background: #94a3b8;
+    margin: 0 6px;
+    flex-shrink: 0;
+}
+
+.window-actions {
+    display: flex;
+    align-items: center;
     gap: 4px;
     justify-content: flex-end;
     margin-left: auto;
+    --wails-draggable: no-drag;
 }
 
 .window-btn {
@@ -909,6 +990,16 @@ async function handleProcess(category, method) {
 .window-btn.close-btn:hover {
     background: rgba(80, 63, 63, 0.2);
     color: #ef4444;
+}
+
+.window-btn.connect-btn:hover {
+    background: rgba(14, 165, 233, 0.15);
+    color: #0284c7;
+}
+
+.window-btn.settings-btn:hover {
+    background: rgba(100, 116, 139, 0.18);
+    color: #0f172a;
 }
 
 
@@ -1060,6 +1151,18 @@ async function handleProcess(category, method) {
 
 .info-value.danger {
     color: #dc2626;
+}
+
+.info-value.alarm-value {
+    color: #dc2626;
+    animation: blink 0.8s ease-in-out infinite alternate;
+}
+
+.radiation-icon {
+    width: 18px;
+    height: 18px;
+    color: #eab308;
+    flex-shrink: 0;
 }
 
 .middle-panel {
