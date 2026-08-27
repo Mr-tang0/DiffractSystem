@@ -7,6 +7,8 @@ update.json
 node_modules
 frontend/dist
 frontend/package.json.md5
+# Wails 自动生成的绑定与运行时（wails dev/build 时重新生成）
+frontend/wailsjs/
 
 # ===== IDE / Editor =====
 .vscode/

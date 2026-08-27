@@ -112,8 +112,9 @@ func (this *DetectorService) Init() {
 	})
 
 	runtime.EventsOn(this.ctx, "net_linked", func(linked ...interface{}) {
-		this.CTSetDstModel()
+
 		this.GetDynamicPara()
+		this.CTSetDstModel()
 
 		// 发送连接成功事件
 		this.heartbeat.Status = "Running"
@@ -159,15 +160,20 @@ func (this *DetectorService) CTSetDstModel() {
 	this.detector.COM_Dst()
 	time.Sleep(100 * time.Millisecond) //等待DST模式切换完成")
 
-	t := this.detector.COM_GetExposeTime()
+	ExposeTime := this.detector.COM_GetExposeTime()
 	this.detector.COM_Dprep()
-	time.Sleep(time.Duration(t+3500) * time.Millisecond) //等待拍背底完成
+	time.Sleep(time.Duration(ExposeTime+3500) * time.Millisecond) //等待DST模式切换完成")
 }
 
 func (this *DetectorService) DetectorCapture() {
 	this.heartbeat.Status = "采集中..."
 	runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
 	this.detector.COM_Dacq()
+}
+
+func (this *DetectorService) DetectorFlash() {
+	this.detector.COM_StopNet()
+	this.detector.COM_StartNet()
 }
 
 func (this *DetectorService) GetDynamicPara() {
@@ -181,7 +187,7 @@ func (this *DetectorService) GetDynamicPara() {
 	this.heartbeat.Sync = dynamicPara["psync"].(int)
 
 	this.heartbeat.Gain = this.detector.COM_GetGainValue()
-	fmt.Printf("增益: %d\n", this.heartbeat.Gain)
+	// fmt.Printf("增益: %d\n", this.heartbeat.Gain)
 }
 
 func (this *DetectorService) SetDynamicPara(exposure int, repeatTimes int, binning string, gain int) {
@@ -191,16 +197,14 @@ func (this *DetectorService) SetDynamicPara(exposure int, repeatTimes int, binni
 		this.heartbeat.ExposeTime = exposure
 		this.heartbeat.Status = "更改配置中..."
 		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
-		this.detector.COM_StopNet()
-		this.detector.COM_StartNet()
+		this.DetectorFlash()
 	}
 
 	if gain != this.heartbeat.Gain {
 		this.heartbeat.Status = "更改配置中..."
 		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
 		this.detector.COM_SetGainValue(gain)
-		this.detector.COM_StopNet()
-		this.detector.COM_StartNet()
+		this.DetectorFlash()
 	}
 }
 
@@ -257,6 +261,31 @@ func (this *DetectorService) SaveImageByID(id int) error {
 	return nil
 }
 
+// ExportAlarmHistory 打开保存对话框，将历史报警消息文本写入用户选择的位置
+func (this *DetectorService) ExportAlarmHistory(content string) error {
+	filename, err := runtime.SaveFileDialog(this.ctx, runtime.SaveDialogOptions{
+		Title:           "导出历史报警消息",
+		DefaultFilename: fmt.Sprintf("报警消息_%s.txt", time.Now().Format("20060102150405")),
+		Filters: []runtime.FileFilter{
+			{DisplayName: "文本文件 (*.txt)", Pattern: "*.txt"},
+		},
+	})
+	if err != nil {
+		fmt.Printf("[DetectorService] 打开导出对话框失败: %v\n", err)
+		return err
+	}
+	if filename == "" {
+		return fmt.Errorf("已取消导出")
+	}
+	// 写入UTF-8 BOM，便于记事本/Excel正确识别中文
+	if err := os.WriteFile(filename, []byte("\uFEFF"+content), 0644); err != nil {
+		fmt.Printf("[DetectorService] 写入导出文件失败: %v\n", err)
+		return err
+	}
+	fmt.Printf("[DetectorService] 历史报警消息已导出至 %s\n", filename)
+	return nil
+}
+
 func (this *DetectorService) handleNETImageEvent(data interface{}) {
 	// 解析事件数据
 	rawData, ok := data.(map[string]interface{})
@@ -264,6 +293,9 @@ func (this *DetectorService) handleNETImageEvent(data interface{}) {
 		fmt.Printf("[DetectorService] 数据类型转换失败，期望map[string]interface{}类型，实际类型: %T\n", data)
 		return
 	}
+
+	//原始图片逆时针旋转90度
+	rawData, _ = this.rotateRawImage(rawData, -90)
 
 	// 使用统一的归一化函数处理图片
 	normalizedImg, err := this.normalizeRawImage(rawData)
