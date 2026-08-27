@@ -24,11 +24,11 @@ func NewStageService() *StageService {
 	return &StageService{
 		plc: *XinJie.NewXinjieClient(""),
 		motors: map[string]Motor{
-			"Y": Motor{
+			"X": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
-					LEN_HD: 0,
-					POS_HD: 4,
+					LEN_HD: X_LEN_HD,
+					POS_HD: X_POS_HD,
 
 					SPEED_HD:      X_SPEED_HD,
 					RESOLUTION_HD: X_RESOLUTION_HD,
@@ -38,11 +38,11 @@ func NewStageService() *StageService {
 					STOP_M: X_STOP_M,
 				},
 			},
-			"R": Motor{
+			"Y": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
-					LEN_HD: 10,
-					POS_HD: 14,
+					LEN_HD: Y_LEN_HD,
+					POS_HD: Y_POS_HD,
 
 					SPEED_HD:      Y_SPEED_HD,
 					RESOLUTION_HD: Y_RESOLUTION_HD,
@@ -55,8 +55,8 @@ func NewStageService() *StageService {
 			"Z": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
-					LEN_HD: 20,
-					POS_HD: 24,
+					LEN_HD: Z_LEN_HD,
+					POS_HD: Z_POS_HD,
 
 					SPEED_HD:      Z_SPEED_HD,
 					RESOLUTION_HD: Z_RESOLUTION_HD,
@@ -66,11 +66,11 @@ func NewStageService() *StageService {
 					STOP_M: Z_STOP_M,
 				},
 			},
-			"X": Motor{
+			"R": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
-					LEN_HD: 30,
-					POS_HD: 34,
+					LEN_HD: R_LEN_HD,
+					POS_HD: R_POS_HD,
 
 					SPEED_HD:      R_SPEED_HD,
 					RESOLUTION_HD: R_RESOLUTION_HD,
@@ -83,8 +83,8 @@ func NewStageService() *StageService {
 			"XX": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
-					LEN_HD: 40,
-					POS_HD: 44,
+					LEN_HD: XX_LEN_HD,
+					POS_HD: XX_POS_HD,
 
 					SPEED_HD:      XX_SPEED_HD,
 					RESOLUTION_HD: XX_RESOLUTION_HD,
@@ -167,14 +167,14 @@ func (this *StageService) heartbeat() {
 
 		runtime.EventsEmit(this.ctx, "motor_heartbeat", this.motors)
 
-		door, err := this.plc.ReadCoil(XinJie.X(43), true)
-		if err != nil {
-			fmt.Println("ReadCoil error:", err)
-			continue
-		}
+		// door, err := this.plc.ReadCoil(XinJie.X(43), true)
+		// if err != nil {
+		// 	fmt.Println("ReadCoil error:", err)
+		// 	continue
+		// }
 		// fmt.Println("door:", door)
 
-		runtime.EventsEmit(this.ctx, "door", door)
+		// runtime.EventsEmit(this.ctx, "door", door)
 
 		time.Sleep(100 * time.Millisecond)
 
