@@ -241,14 +241,14 @@ func (this *StageService) StageSetSpeed(Axis string, speed float32) error {
 }
 
 // StageSetResolution 设置指定轴的分辨率
-func (this *StageService) StageSetResolution(Axis string, resolution float32) error {
+func (this *StageService) StageSetResolution(Axis string, resolution uint32) error {
 	if debug {
 		fmt.Println("StageSetResolution", Axis, resolution)
 	}
 	if _, ok := this.motors[Axis]; !ok {
 		return errors.New("unknown axis: " + Axis)
 	}
-	return this.plc.WriteRegister(XinJie.HD(this.motors[Axis].ADDR.RESOLUTION_HD), resolution, XinJie.Float32, false)
+	return this.plc.WriteRegister(XinJie.HD(this.motors[Axis].ADDR.RESOLUTION_HD), resolution, XinJie.UInt32, false)
 }
 
 func (this *StageService) SetAlarmLED(alarm bool) error {
