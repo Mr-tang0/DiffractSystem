@@ -6,6 +6,8 @@ type ADDR struct {
 	POS_HD        uint16 `json:"pos_hd"`
 	RESOLUTION_HD uint16 `json:"resolution_hd"`
 	MOVE_M        uint16 `json:"move_m"`
+	JOG_M         uint16 `json:"jog_m"`
+	STOP_M        uint16 `json:"stop_m"`
 }
 
 type Motor struct {

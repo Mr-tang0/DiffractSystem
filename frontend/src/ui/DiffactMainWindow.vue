@@ -9,7 +9,7 @@
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                         </svg>
                     </button>
-                    <button class="window-btn settings-btn" type="button" title="系统设置" @click="systemSettingsVisible = true">
+                    <button class="window-btn settings-btn" type="button" title="系统设置" @click="systemSetVisible = true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -211,7 +211,7 @@
                             class="toolbar-btn save-btn"
                             type="button"
                             @click="handleSaveImage"
-                            :disabled="selectedImageId === 0"
+                            :disabled="selectedImageId < 0"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -224,7 +224,7 @@
                             class="toolbar-btn delete-btn"
                             type="button"
                             @click="handleDeleteImage"
-                            :disabled="selectedImageId === 0"
+                            :disabled="selectedImageId < 0"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="3 6 5 6 21 6"/>
@@ -569,12 +569,19 @@
         @close="systemAlarmVisible = false"
     />
 
+    <SystemSetModal
+        :visible="systemSetVisible"
+        @close="systemSetVisible = false"
+        @saved="() => { showToast('位移台参数已保存') }"
+    />
+
 </template>
 
 <script setup>
 import DeviceConnectModal from './modal/DeviceConnectModal.vue'
-import DetectorParamsModal from './pannel/DetectorParamsModal.vue'
+import DetectorParamsModal from './modal/DetectorParamsModal.vue'
 import SystemAlarmModal from './modal/SystemAlarmModal.vue'
+import SystemSetModal from './modal/SystemSetModal.vue'
 
 import { reactive, ref, onMounted } from 'vue'
 import { WindowMinimise, WindowToggleMaximise, Quit,EventsOn,} from '../../wailsjs/runtime/runtime'
@@ -585,8 +592,8 @@ import { DetectorCapture, CallImageByID, DelImageByID, SaveImageByID } from '../
 
 // 设备连接模态框显隐
 const deviceConnectVisible = ref(true)
-// 系统设置模态框显隐
-const systemSettingsVisible = ref(false)
+// 系统设置模态框显隐（位移台速度/分辨率）
+const systemSetVisible = ref(false)
 // 探测器参数模态框显隐
 const detectorParamsVisible = ref(false)
 // 系统报警模态框显隐
@@ -633,7 +640,7 @@ const Status = reactive({
 // 图像数据状态
 const DiffractImage = ref('');
 const imageRotateAngle = ref(0.0)
-const selectedImageId = ref(0)
+const selectedImageId = ref(-1)
 const imagesCounts = ref(0)
 
 
@@ -685,7 +692,6 @@ onMounted(async () =>{
     EventsOn('detector_image', (data) => {
         console.log("收到新图像")
         DiffractImage.value = data.image;
-        selectedImageId.value = imagesCounts.value
     });
 
     // 监听后端detector_heartbeat事件（新心跳到达）
@@ -703,7 +709,10 @@ onMounted(async () =>{
         Status.Detector.width = data.width
         Status.Detector.height = data.height
 
-        imagesCounts.value = data.image_counts
+        if (imagesCounts.value!=data.image_counts) {
+            imagesCounts.value = data.image_counts
+            selectedImageId.value = imagesCounts.value
+        }
     });
 
     //计时器，每秒更新一次运行时间：YYYY-MM-DD HH:mm:ss
@@ -885,7 +894,7 @@ function showToast(msg) {
 // ===================== 图像处理（调用入口占位）=====================
 async function handleSelectImageByID() {
     try {
-        await CallImageByID(selectedImageId.value)
+        await CallImageByID(selectedImageId.value - 1)
         showToast(`已选择图像 ${selectedImageId.value}`)
     } catch (err) {
         console.error('handleSelectImageByID fail:', err)
@@ -895,7 +904,7 @@ async function handleSelectImageByID() {
 
 async function handleSaveImage() {
     try {
-        await SaveImageByID(selectedImageId.value)
+        await SaveImageByID(selectedImageId.value - 1)
         showToast('保存成功')
     } catch (err) {
         console.error('handleSaveImage fail:', err)
@@ -905,7 +914,7 @@ async function handleSaveImage() {
 
 async function handleDeleteImage() {
     try {
-        await DelImageByID(selectedImageId.value)
+        await DelImageByID(selectedImageId.value-1)
         showToast('删除成功')
     } catch (err) {
         console.error('handleDeleteImage fail:', err)

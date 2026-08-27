@@ -187,6 +187,14 @@ func (this *DetectorService) GetDynamicPara() {
 func (this *DetectorService) SetDynamicPara(exposure int, repeatTimes int, binning string, gain int) {
 	this.detector.COM_SetDynamicPara(exposure, repeatTimes, binning, this.heartbeat.Sync)
 
+	if exposure != this.heartbeat.ExposeTime {
+		this.heartbeat.ExposeTime = exposure
+		this.heartbeat.Status = "更改配置中..."
+		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
+		this.detector.COM_StopNet()
+		this.detector.COM_StartNet()
+	}
+
 	if gain != this.heartbeat.Gain {
 		this.heartbeat.Status = "更改配置中..."
 		runtime.EventsEmit(this.ctx, "detector_heartbeat", this.heartbeat)
@@ -194,7 +202,6 @@ func (this *DetectorService) SetDynamicPara(exposure int, repeatTimes int, binni
 		this.detector.COM_StopNet()
 		this.detector.COM_StartNet()
 	}
-
 }
 
 func (this *DetectorService) CallImageByID(id int) error {
@@ -289,7 +296,20 @@ func (this *DetectorService) normalizeRawImage(rawData map[string]interface{}) (
 
 	grayImg := image.NewGray(image.Rect(0, 0, width, height))
 
-	rangeVal := this.ImageMaxVal - this.ImageMinVal
+	// 第一遍：计算图像的实际最小值和最大值
+	minVal := uint32(65535)
+	maxVal := uint32(0)
+	for i := 0; i < width*height; i++ {
+		val := uint32(imageData[i*2]) | (uint32(imageData[i*2+1]) << 8)
+		if val < minVal {
+			minVal = val
+		}
+		if val > maxVal {
+			maxVal = val
+		}
+	}
+
+	rangeVal := maxVal - minVal
 	if rangeVal == 0 {
 		rangeVal = 1
 	}
@@ -300,14 +320,7 @@ func (this *DetectorService) normalizeRawImage(rawData map[string]interface{}) (
 
 	for i := 0; i < width*height; i++ {
 		val := uint32(imageData[i*2]) | (uint32(imageData[i*2+1]) << 8)
-		var normalized uint32
-		if val <= this.ImageMinVal {
-			normalized = 0
-		} else if val >= this.ImageMaxVal {
-			normalized = 255
-		} else {
-			normalized = (val - this.ImageMinVal) * 255 / rangeVal
-		}
+		normalized := (val - minVal) * 255 / rangeVal
 		grayImg.Pix[i] = uint8(normalized)
 
 		// 统计直方图：将16位像素值映射到0-10000范围并分桶

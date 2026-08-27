@@ -88,6 +88,9 @@ Section
 
     !insertmacro wails.files
 
+    ; 复制额外的DLL文件
+    File "..\..\..\services\CSDK\SDK\ComApi.dll"
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 

@@ -24,7 +24,7 @@ func NewStageService() *StageService {
 	return &StageService{
 		plc: *XinJie.NewXinjieClient(""),
 		motors: map[string]Motor{
-			"X": Motor{
+			"Y": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
 					LEN_HD: 0,
@@ -32,10 +32,13 @@ func NewStageService() *StageService {
 
 					SPEED_HD:      X_SPEED_HD,
 					RESOLUTION_HD: X_RESOLUTION_HD,
-					MOVE_M:        X_MOVE_M,
+
+					MOVE_M: X_MOVE_M,
+					JOG_M:  X_JOG_M,
+					STOP_M: X_STOP_M,
 				},
 			},
-			"Y": Motor{
+			"R": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
 					LEN_HD: 10,
@@ -45,6 +48,8 @@ func NewStageService() *StageService {
 					RESOLUTION_HD: Y_RESOLUTION_HD,
 
 					MOVE_M: Y_MOVE_M,
+					JOG_M:  Y_JOG_M,
+					STOP_M: Y_STOP_M,
 				},
 			},
 			"Z": Motor{
@@ -55,10 +60,13 @@ func NewStageService() *StageService {
 
 					SPEED_HD:      Z_SPEED_HD,
 					RESOLUTION_HD: Z_RESOLUTION_HD,
-					MOVE_M:        Z_MOVE_M,
+
+					MOVE_M: Z_MOVE_M,
+					JOG_M:  Z_JOG_M,
+					STOP_M: Z_STOP_M,
 				},
 			},
-			"R": Motor{
+			"X": Motor{
 				Status: "Stopped",
 				ADDR: ADDR{
 					LEN_HD: 30,
@@ -66,7 +74,10 @@ func NewStageService() *StageService {
 
 					SPEED_HD:      R_SPEED_HD,
 					RESOLUTION_HD: R_RESOLUTION_HD,
-					MOVE_M:        R_MOVE_M,
+
+					MOVE_M: R_MOVE_M,
+					JOG_M:  R_JOG_M,
+					STOP_M: R_STOP_M,
 				},
 			},
 			"XX": Motor{
@@ -77,7 +88,10 @@ func NewStageService() *StageService {
 
 					SPEED_HD:      XX_SPEED_HD,
 					RESOLUTION_HD: XX_RESOLUTION_HD,
-					MOVE_M:        XX_MOVE_M,
+
+					MOVE_M: XX_MOVE_M,
+					JOG_M:  XX_JOG_M,
+					STOP_M: XX_STOP_M,
 				},
 			},
 		},
@@ -171,7 +185,7 @@ func (this *StageService) StageStop(Axis string) error {
 	if debug {
 		fmt.Println("StageStop", Axis)
 	}
-	return this.plc.WriteCoil(XinJie.M(this.motors[Axis].ADDR.MOVE_M), true)
+	return this.plc.WriteCoil(XinJie.M(this.motors[Axis].ADDR.STOP_M), true)
 }
 
 func (this *StageService) StageRelMove(Axis string, pos float32) error {
@@ -184,6 +198,57 @@ func (this *StageService) StageRelMove(Axis string, pos float32) error {
 		return err
 	}
 	return this.plc.WriteCoil(XinJie.M(this.motors[Axis].ADDR.MOVE_M), true)
+}
+
+func (this *StageService) StageGetSpeed(Axis string) (float32, error) {
+	if debug {
+		fmt.Println("StageGetSpeed", Axis)
+	}
+	val, err := this.plc.ReadRegister(XinJie.HD(this.motors[Axis].ADDR.SPEED_HD), XinJie.Float32, false)
+	if err != nil {
+		return 0, err
+	}
+	speed, ok := val.(float32)
+	if !ok {
+		return 0, errors.New("ReadRegister type error: " + Axis)
+	}
+	return speed, nil
+}
+
+func (this *StageService) StageGetResolution(Axis string) (uint32, error) {
+	if debug {
+		fmt.Println("StageGetResolution", Axis)
+	}
+	val, err := this.plc.ReadRegister(XinJie.HD(this.motors[Axis].ADDR.RESOLUTION_HD), XinJie.UInt32, false)
+	if err != nil {
+		return 0, err
+	}
+	resolution, ok := val.(uint32)
+	if !ok {
+		return 0, errors.New("ReadRegister type error: " + Axis)
+	}
+	return resolution, nil
+}
+
+func (this *StageService) StageSetSpeed(Axis string, speed float32) error {
+	if debug {
+		fmt.Println("StageSetSpeed", Axis, speed)
+	}
+	if _, ok := this.motors[Axis]; !ok {
+		return errors.New("unknown axis: " + Axis)
+	}
+	return this.plc.WriteRegister(XinJie.HD(this.motors[Axis].ADDR.SPEED_HD), speed, XinJie.Float32, false)
+}
+
+// StageSetResolution 设置指定轴的分辨率
+func (this *StageService) StageSetResolution(Axis string, resolution float32) error {
+	if debug {
+		fmt.Println("StageSetResolution", Axis, resolution)
+	}
+	if _, ok := this.motors[Axis]; !ok {
+		return errors.New("unknown axis: " + Axis)
+	}
+	return this.plc.WriteRegister(XinJie.HD(this.motors[Axis].ADDR.RESOLUTION_HD), resolution, XinJie.Float32, false)
 }
 
 func (this *StageService) SetAlarmLED(alarm bool) error {
