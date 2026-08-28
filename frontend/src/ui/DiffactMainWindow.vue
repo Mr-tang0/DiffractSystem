@@ -902,14 +902,14 @@ const axes = ref({
     },
     R:{
         Name:'R',
-        CW:'顺向',
-        CCW:'逆向',
+        CW:'顺',
+        CCW:'逆',
         Unit:'°',
     },
     XX:{
         Name:'XX',
-        CW:'远离',
-        CCW:'靠近',
+        CW:'前',
+        CCW:'后',
         Unit:'mm',
     }
 })

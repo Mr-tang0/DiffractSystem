@@ -11,7 +11,7 @@ import (
 	XinJie "github.com/Mr-tang0/PIMSGoMod/protocol/XinJie"
 )
 
-const debug = true
+const debug = false
 
 type StageService struct {
 	motors    map[string]Motor

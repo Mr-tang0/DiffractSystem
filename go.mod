@@ -3,14 +3,15 @@ module Diffract
 go 1.26.4
 
 require (
-	github.com/Mr-tang0/PIMSGoMod v1.0.0
-	github.com/wailsapp/wails/v2 v2.11.0
+	github.com/Mr-tang0/PIMSGoMod v1.0.1
+	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/image v0.12.0
 )
 
-replace github.com/Mr-tang0/PIMSGoMod => D:/appfile/code/vs/PIMSGoMod
+// replace github.com/Mr-tang0/PIMSGoMod => D:/appfile/code/vs/PIMSGoMod
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goburrow/modbus v0.1.0 // indirect
